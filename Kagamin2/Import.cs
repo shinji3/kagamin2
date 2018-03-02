@@ -528,67 +528,10 @@ namespace Kagamin2
                         throw new KagamiException("HTTPヘッダの取得中にエラーが発生しました(HTTPHeader>50KBover)");
                     }
                 }
-                // インポート元の応答ヘッダを流用する
-                string str = System.Text.Encoding.ASCII.GetString(ack_log,0,count);
-                if (str.IndexOf("\r\n") < 0)
-                {
-                    //改行コードがLFのみならCR+LFに置換する
-                    str = str.Replace("\n", "\r\n");
-                }
-                // X-Serverヘッダ設定
-                if (str.IndexOf("X-Server:") >= 0)
-                {
-                    // インポート先からの応答に既にX-Serverヘッダがあれば、自分の情報に置き換える
-                    string bfr = str.Substring(0, str.IndexOf("X-Server:"));
-                    string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("X-Server:")) + 2);
-                    str = bfr + "X-Server: " + Front.AppName + "\r\n" + aft;
-                }
-                else
-                {
-                    // X-Serverヘッダが無ければ追加する
-                    str = str.Replace("\r\n\r\n", "\r\nX-Server: " + Front.AppName + "\r\n\r\n");
-                }
-                // Keep-Alive設定
-                if (str.IndexOf("Keep-Alive:") >= 0)
-                {
-                    // インポート先からの応答にKeep-Aliveヘッダがあれば、削除する
-                    string bfr = str.Substring(0, str.IndexOf("Keep-Alive:"));
-                    string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("Keep-Alive:")) + 2);
-                    str = bfr + aft;
-                }
-                // Connection設定
-                if (str.IndexOf("Connection:") >= 0)
-                {
-                    // インポート先からの応答にConnectionヘッダがあれば、Connection: closeに置き換える
-                    string bfr = str.Substring(0, str.IndexOf("Connection:"));
-                    string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("Connection:")) + 2);
-                    str = bfr + "Connection: close\r\n" + aft;
-                }
-                else
-                {
-                    // Connectionヘッダが無ければ追加する
-                    str = str.Replace("\r\n\r\n", "\r\nConnection: close\r\n\r\n");
-                }
-                /*
-                if (str.IndexOf("Content-Length:") >= 0)
-                {
-                    // Content-Lengthがあれば削除する
-                    string bfr = str.Substring(0, str.IndexOf("Content-Length:"));
-                    string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("Content-Length:")) + 2);
-                    str = bfr + aft;
-                }
-                */
 
                 //ヘッダ上と下を繋げるメモリストリーム
-                MemoryStream ms1,ms2;
-                ms1 = new MemoryStream();
+                MemoryStream ms2;
                 ms2 = new MemoryStream();
-                count = enc.GetBytes(str).Length;
-                ms1.Write(enc.GetBytes(str), 0, count);
-                Status.HeadRspMsg10 = ms1.ToArray();
-                //Status.HeadRspMsg11 = ms1.ToArray();
-                Status.HeadRspMsg10[7] = 0x30;  //HTTP1.0
-                //Status.HeadRspMsg11[7] = 0x31;  //HTTP1.1
 
                 // ASFヘッダメモ: type(2)+size(2)+seq(4)+unk(2)+szcfm(2)
 
@@ -704,6 +647,29 @@ namespace Kagamin2
                 }
                 catch { }
                 sock.Close();
+
+                // エクスポートの応答データ作成
+                string str =
+                    "HTTP/1.0 200 OK\r\n" +
+                    "Server: Rex/9.0.0.2980\r\n" +
+                    "Cache-Control: no-cache\r\n" +
+                    "Pragma: no-cache\r\n" +
+                    "Pragma: client-id=3320437311\r\n" +
+                    "Pragma: features=\"broadcast,playlist\"\r\n" +
+                    "X-Server: " + Front.AppName + "\r\n" +
+                    "Connection: Keep-Alive\r\n" +
+                    "Content-Type: application/vnd.ms.wms-hdr.asfv1\r\n" +
+                    "Content-Length: " + Status.HeadStream.Length + "\r\n\r\n";
+                //ヘッダ上と下を繋げるメモリストリーム
+                MemoryStream ms1;
+                ms1 = new MemoryStream();
+                count = enc.GetBytes(str).Length;
+                ms1.Write(enc.GetBytes(str), 0, count);
+                Status.HeadRspMsg10 = ms1.ToArray();
+                //Status.HeadRspMsg11 = ms1.ToArray();
+                Status.HeadRspMsg10[7] = 0x30;  //HTTP1.0
+                //Status.HeadRspMsg11[7] = 0x31;  //HTTP1.1
+
             }
             catch (KagamiException ke)
             {
@@ -1168,56 +1134,17 @@ namespace Kagamin2
                         throw new KagamiException("HTTPヘッダの取得中にエラーが発生しました(HTTPHeader>50KBover)");
                     }
                 }
-                // インポート元の応答ヘッダを流用する
-                string str = System.Text.Encoding.ASCII.GetString(ack_log, 0, count);
-                if (str.IndexOf("\r\n") < 0)
-                {
-                    //改行コードがLFのみならCR+LFに置換する
-                    str = str.Replace("\n", "\r\n");
-                }
-                // X-Serverヘッダ設定
-                if (str.IndexOf("X-Server:") >= 0)
-                {
-                    // インポート先からの応答に既にX-Serverヘッダがあれば、自分の情報に置き換える
-                    string bfr = str.Substring(0, str.IndexOf("X-Server:"));
-                    string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("X-Server:")) + 2);
-                    str = bfr + "X-Server: " + Front.AppName + "\r\n" + aft;
-                }
-                else
-                {
-                    // X-Serverヘッダが無ければ追加する
-                    str = str.Replace("\r\n\r\n", "\r\nX-Server: " + Front.AppName + "\r\n\r\n");
-                }
-                // Keep-Alive設定
-                if (str.IndexOf("Keep-Alive:") >= 0)
-                {
-                    // インポート先からの応答にKeep-Aliveヘッダがあれば、削除する
-                    string bfr = str.Substring(0, str.IndexOf("Keep-Alive:"));
-                    string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("Keep-Alive:")) + 2);
-                    str = bfr + aft;
-                }
-                // Connection設定
-                if (str.IndexOf("Connection:") >= 0)
-                {
-                    // インポート先からの応答にConnectionヘッダがあれば、Connection: closeに置き換える
-                    string bfr = str.Substring(0, str.IndexOf("Connection:"));
-                    string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("Connection:")) + 2);
-                    str = bfr + "Connection: close\r\n" + aft;
-                }
-                else
-                {
-                    // Connectionヘッダが無ければ追加する
-                    str = str.Replace("\r\n\r\n", "\r\nConnection: close\r\n\r\n");
-                }
-                /*
-                if (str.IndexOf("Content-Length:") >= 0)
-                {
-                    // Content-Lengthがあれば削除する
-                    string bfr = str.Substring(0, str.IndexOf("Content-Length:"));
-                    string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("Content-Length:")) + 2);
-                    str = bfr + aft;
-                }
-                */
+                // エクスポートの応答データ作成
+                string str =
+                    "HTTP/1.0 200 OK\r\n" +
+                    "Server: Rex/9.0.0.2980\r\n" +
+                    "Cache-Control: no-cache\r\n" +
+                    "Pragma: no-cache\r\n" +
+                    "Pragma: client-id=3320437311\r\n" +
+                    "Pragma: features=\"broadcast,playlist\"\r\n" +
+                    "X-Server: " + Front.AppName + "\r\n" +
+                    "Connection: close\r\n" +
+                    "Content-Type: application/x-mms-framed\r\n\r\n";
 
                 //データ取得応答ヘッダを保持
                 MemoryStream ms;
@@ -2028,12 +1955,8 @@ namespace Kagamin2
             Encoding enc = Encoding.ASCII;
             int count = enc.GetBytes(str).Length;
             ms1.Write(enc.GetBytes(str), 0, count);
-            Status.HeadRspMsg10 = ms1.ToArray();
-            //Status.HeadRspMsg11 = ms1.ToArray();
             Status.DataRspMsg10 = ms1.ToArray();
             //Status.DataRspMsg11 = ms1.ToArray();
-            Status.HeadRspMsg10[7] = 0x30;  //HTTP1.0
-            //Status.HeadRspMsg11[7] = 0x31;  //HTTP1.1
             Status.DataRspMsg10[7] = 0x30;  //HTTP1.0
             //Status.DataRspMsg11[7] = 0x31;  //HTTP1.1
 
@@ -2112,6 +2035,29 @@ namespace Kagamin2
                         throw new KagamiException("ストリームヘッダの取得中にエラーが発生しました(StreamHeader>50KBover)");
                     }
                 }
+
+                // エクスポートの応答データ作成
+                str =
+                    "HTTP/1.0 200 OK\r\n" +
+                    "Server: Rex/9.0.0.2980\r\n" +
+                    "Cache-Control: no-cache\r\n" +
+                    "Pragma: no-cache\r\n" +
+                    "Pragma: client-id=3320437311\r\n" +
+                    "Pragma: features=\"broadcast,playlist\"\r\n" +
+                    "X-Server: " + Front.AppName + "\r\n" +
+                    "Connection: Keep-Alive\r\n" +
+                    "Content-Type: application/vnd.ms.wms-hdr.asfv1\r\n" +
+                    "Content-Length: " + Status.HeadStream.Length + "\r\n\r\n";
+                //ヘッダ上と下を繋げるメモリストリーム
+                MemoryStream ms3;
+                ms3 = new MemoryStream();
+                count = enc.GetBytes(str).Length;
+                ms3.Write(enc.GetBytes(str), 0, count);
+                Status.HeadRspMsg10 = ms3.ToArray();
+                //Status.HeadRspMsg11 = ms1.ToArray();
+                Status.HeadRspMsg10[7] = 0x30;  //HTTP1.0
+                //Status.HeadRspMsg11[7] = 0x31;  //HTTP1.1
+
                 if (Status.ImportURL == "待機中")
                 {
                     Front.AddLogData(1, Status, "Push配信ストリームヘッダの取得中に終了要求を受けました");

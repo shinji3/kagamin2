@@ -662,7 +662,7 @@ namespace Kagamin2
                     // 美人じゃない
                     if (userAgent.IndexOf("NSPlayer") == 0)
                     {
-                        if (str.IndexOf("x-mms-framed") > 0 || str.IndexOf("stream-switch") > 0 || Status.Type == 2)
+                        if (str.IndexOf("x-mms-framed") > 0 || str.IndexOf("stream-switch") > 0)
                         {
                             #region NSPlayerヘッダ送信＋接続持続
                             try
