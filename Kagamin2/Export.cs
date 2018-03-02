@@ -660,7 +660,7 @@ namespace Kagamin2
                     #endregion
 
                     // ”ül‚¶‚á‚È‚¢
-                    if (userAgent.IndexOf("NSPlayer") == 0)
+                    if (userAgent.IndexOf("NSPlayer") == 0 || userAgent.IndexOf("Windows-Media-Player") == 0)
                     {
                         if (str.IndexOf("x-mms-framed") > 0 || str.IndexOf("stream-switch") > 0)
                         {
