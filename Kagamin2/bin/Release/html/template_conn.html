@@ -1,0 +1,233 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja">
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Content-Script-Type" content="text/javascript">
+<script type="text/javascript">
+<!--
+function closewin() {
+	document.send.submit();
+    setTimeout("window.close()", 5000);
+}
+function pull() {
+	document.send.address.disabled = false;
+}
+function push() {
+	document.send.address.disabled = true;
+}
+// -->
+</script>
+<title>鏡置き場</title>
+<link rel="stylesheet" type="text/css" href="/kagamin.css" />
+</head>
+
+<body>
+
+<DIV align="center">
+
+<hr width="90%" size=1>
+<table width="90%">
+	<tr>
+		<td class="title">接続</td>
+	</tr>
+</table>
+
+
+<hr width="90%" size="1">
+<br>
+
+<form method="get" name=send action="/conn.html">
+
+<table align="center">
+	<tr>
+		<td width="120" class="category">
+			配信種別
+		</td>
+		<td>
+			<input type="radio" name="mode" size="50" value="pull" checked="checked" onClick="pull()">Pull配信
+			<input type="radio" name="mode" size="50" value="push" onClick="push()" <ENABLE_PUSH>>Push配信
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			アドレス
+		</td>
+		<td>
+			<input type="text" id="address" name="address" size="50" value="">
+			<input type="hidden" name="Port"  value="<PORT>">
+			<input type="hidden" name="admin" value="<ADMIN_PASS>">
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			パスワード
+		</td>
+		<td>
+			<input type="text" name="password" size="10" value="">
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			コメント
+		</td>
+		<td>
+			<input type="text" name="comment" size="50" value="">
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			配信URLの表示
+		</td>
+		<td>
+			<input type="radio" name="radio" size="50" value="on" checked="checked">表示
+			<input type="radio" name="radio" size="50" value="off">非表示
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			親リダイレクト
+		</td>
+		<td>
+			<input type="radio" name="redir_p" size="50" value="on">許可
+			<input type="radio" name="redir_p" size="50" value="off" checked="checked">不許可
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			子リダイレクト
+		</td>
+		<td>
+			<input type="radio" name="redir_c" size="50" value="on" checked="checked">許可
+			<input type="radio" name="redir_c" size="50" value="off">不許可
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			リザーブIP登録
+		</td>
+		<td>
+			<input type="text" name="reserve" size="50" value="">
+		</td>
+	</tr>
+<!-- 実況URL入力を使いたい人はコメントアウト解除すれば使えます
+	<tr>
+		<td class="category">
+			実況URL
+		</td>
+		<td>
+			<input size="50" type="text" name="url" value="">
+		</td>
+	</tr>
+-->
+</table>
+
+
+
+<table align="center">
+	<tr>
+		<td>
+			<input type="button" value=" 接 続 " onclick="closewin();" onkeypress="closewin();">
+		</td>
+	</tr>
+</table>
+
+</form>
+
+
+
+
+<hr width="90%" size=1>
+<br>
+
+
+<table align = "center">
+	<tr>
+		<td width="80" class="category">
+			配信種別
+		</td>
+		<td>
+			通常はPull配信を選択します。<br>
+			Push配信を行いたい場合はPush配信を選択します。
+		</td>
+	</tr>
+	<tr>
+		<td width="80" class="category">
+			アドレス
+		</td>
+		<td>
+			配信URLを入力してください。Push配信時は不要です。<br>
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			パスワード
+		</td>
+		<td>
+			切断時に使用するパスワードを設定してください。<br>
+			鏡を終了したい時にしか使わないので、適当で構いません。
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			コメント
+		</td>
+		<td>
+			コメント入力できます。日本語での入力が可能です。
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			配信URLの表示
+		</td>
+		<td>
+			入力したURLを表示させるかどうか設定できます。
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			親リダイレクト
+		</td>
+		<td>
+			美人になったとき、インポート元へのリダイレクト応答を<br>
+			返すかどうか設定できます。
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			子リダイレクト
+		</td>
+		<td>
+			美人になったとき、子鏡へのリダイレクト応答を<br>
+			返すかどうか設定できます。
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			リザーブIP登録
+		</td>
+		<td>
+			リザーブIPをカンマ区切りで最大<RESERVE>個まで入力できます。<br>
+			登録しない場合は空欄のままで問題ありません。
+		</td>
+	</tr>
+<!--
+	<tr>
+		<td class="category">
+			実況URL
+		</td>
+		<td>
+			実況スレッドURLを登録できます。<br>
+                        <small><LIVEOUT_URL></small>と<br>
+                        前方一致する必要があります。<br>
+			登録すると鏡置き場トップに表示されます。<br>
+			登録しない場合は空欄のままで問題ありません。
+		</td>
+	</tr>
+-->
+</table>
+
+
+</DIV>
+</body>
+</html>

@@ -1,0 +1,137 @@
+﻿<html><head>
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta http-equiv="Pragma" content="no-cache">
+<title>鏡置き場＠管理モード</title>
+<link rel="stylesheet" type="text/css" href="/kagamin.css" />
+</head>
+<body>
+<TEMPLATE>
+<!--
+管理モード用の表示内容テンプレート　───────────────────────────────────
+│デフォルトのテンプレートは、携帯電話からのアクセスを前提としたコンパクトな設計にしています。
+│
+│<KAGAMI>タグの内容が、各ポートの状態に応じて、
+│以下の４つのポート状態タグ内の文字列に置き換えられます。
+│
+│★ポート状態タグ★
+│<未起動表示>、<待機中表示>、<接続試行中表示>、<接続中表示>
+│
+│さらに、ポート状態タグ内にある以下の個別タグは、下記内容のとおり置き換えられます。
+│(この個別タグは、ポート状態タグ内でのみ有効です。)
+│※注意
+│  <未起動表示>のポート状態タグ内では、
+│  <COUNT>、<PORT>、<MAXCONN>、及び管理モード追加タグしか置換されません。
+│
+│★個別タグ★
+│<COUNT>     … 鏡置き場の通番に置き換えられます
+│<MY_URL>    … 鏡置き場のURL(http://hostname:port)に置き換えられます
+│<PORT>      … 鏡置き場のPORT番号に置き換えられます
+│<SRC_URL>   … ★管理モードでは、接続元非表示の効果は無視され、常に相手のURLが表示されます
+│<CONN>      … 現在接続中のクライアント数に置き換えられます
+│<MAXCONN>   … "最大通常接続数+最大リザ接続数"に置き換えられます
+│               未起動ポートの場合前回終了時にGUI上で設定されていた値が設定されます
+│<COMMENT>   … コメントに置き換えられます
+│<BANDWIDTH> … 帯域制限中の場合、"xxxKbps"に置き換えられます。非制限中の場合、"-"に置き換えられます
+│<BITRATE>   … インポート元の申告ビットレート "xxxKbps" に置き換えられます
+│<BUSYCOUNT> … その鏡ポートでのビジーカウンタ値に置き換えられます
+│<TIME>      … インポート接続の経過時間に置き換えられます
+│
+│★管理モード追加タグ★
+│管理モードタグは、状態タグの外でも利用できます。
+│<PAUSE>      … 既存タグですが、管理モードでは新規接続制限の状態に応じて「制限なし」「一時停止中」の
+│                文字列に置き換えられます。
+│<BAND>       … 帯域制限状態です。「開始中」か、「停止中」の文字列に置き換えられます。
+│<ADMIN_PASS> … 管理者パスワードに置き換えられます。
+│<TRF_UP_DAY> … 日間UP転送量
+│<TRF_DL_DAY> … 日間DL転送量
+│<TRF_UP_MON> … 月間UP転送量
+│<TRF_DL_MON> … 月間DL転送量
+│
+└────────────────────────────────────────────────────
+以下、<KAGAMI>の置換用定義
+
+<未起動表示>
+<form method="get" name=send action="/admin.html">
+PORT:<PORT> 未起動<br>
+枠設定(通常+リザ):<input type="text" size="5" name="conn" value="<MAXCONN>"><br>
+<input type="submit" value="待受開始">
+<input type="hidden" name="mode" value="start">
+<input type="hidden" name="port" value="<PORT>">
+<input type="hidden" name="password" value="<ADMIN_PASS>">
+</form>
+<hr width="90%" size="1">
+</未起動表示>
+
+<待機中表示>
+<form method="get" name=send action="/admin.html">
+PORT:<PORT> 待機中<br>
+帯域制限:<BANDWIDTH><br>
+接続数:<CONN>/<input type="text" size="5" name="conn" value="<MAXCONN>"><input type="submit" value="設"><br>
+<a href="/conn.html?open=<PORT>&admin=<ADMIN_PASS>">強制接続</a><br>
+<a href="/admin.html?mode=stop&port=<PORT>&password=<ADMIN_PASS>">待受停止</a>
+<input type="hidden" name="mode" value="chg">
+<input type="hidden" name="port" value="<PORT>">
+<input type="hidden" name="password" value="<ADMIN_PASS>">
+</form>
+<hr width="90%" size="1">
+</待機中表示>
+
+<接続試行中表示>
+<form method="get" name=send action="/admin.html">
+PORT:<PORT> 接続試行中<br>
+コメント:<COMMENT><br>
+帯域制限:<BANDWIDTH><br>
+接続数:<CONN>/<input type="text" size="5" name="conn" value="<MAXCONN>"><input type="submit" value="設"><br>
+<a href="/admin.html?mode=dis&Port=<PORT>&password=<ADMIN_PASS>">強制切断</a><br>
+<a href="/set.html?port=<PORT>&password=<ADMIN_PASS>">強制設定変更</a><br>
+<a href="/admin.html?mode=stop&port=<PORT>&password=<ADMIN_PASS>">強制停止</a>
+<input type="hidden" name="mode" value="chg">
+<input type="hidden" name="port" value="<PORT>">
+<input type="hidden" name="password" value="<ADMIN_PASS>">
+</form>
+<hr width="90%" size="1">
+</接続試行中表示>
+
+<接続中表示>
+<form method="get" name=send action="/admin.html">
+PORT:<PORT> 接続中<br>
+接続時間:<TIME><br>
+コメント:<COMMENT><br>
+帯域制限:<BANDWIDTH><br>
+接続数:<CONN>/<input type="text" size="5" name="conn" value="<MAXCONN>"><input type="submit" value="設"><br>
+<a href="/admin.html?mode=dis&Port=<PORT>&password=<ADMIN_PASS>">強制切断</a><br>
+<a href="/set.html?port=<PORT>&password=<ADMIN_PASS>">強制設定変更</a><br>
+<a href="/admin.html?mode=stop&port=<PORT>&password=<ADMIN_PASS>">強制停止</a>
+<input type="hidden" name="mode" value="chg">
+<input type="hidden" name="port" value="<PORT>">
+<input type="hidden" name="password" value="<ADMIN_PASS>">
+</form>
+<hr width="90%" size="1">
+</接続中表示>
+-->
+</TEMPLATE>
+<center>
+<a href="/admin.html?password=<ADMIN_PASS>">再読込</a><br>
+<br>
+<form method="get" name=send action="/admin.html">
+≪全般設定≫<br>
+新規接続:<PAUSE>[<a href="/admin.html?mode=pause&password=<ADMIN_PASS>">切替</a>]<br>
+帯域制限:<BAND>[<a href="/admin.html?mode=band&password=<ADMIN_PASS>">切替</a>]<br>
+枠:<input type="text" size="5" name="conn" value="<MAXCONN>"><input type="submit" value="全ポート待受開始"><br>
+<input type="hidden" name="mode" value="startall">
+<input type="hidden" name="password" value="<ADMIN_PASS>">
+<a href="/admin.html?mode=stopall&password=<ADMIN_PASS>">全ポート待受停止</a><br>
+<a href="/admin.html?mode=disall&password=<ADMIN_PASS>">全ポート強制切断</a><br>
+</form>
+<hr width="90%" size="1">
+
+<KAGAMI>
+<KAGAMI>
+<KAGAMI>
+<KAGAMI>
+<KAGAMI>
+<KAGAMI>
+
+<VERSION>
+</center>
+</body></html>

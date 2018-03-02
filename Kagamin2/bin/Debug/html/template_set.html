@@ -1,0 +1,190 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="ja">
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Content-Script-Type" content="text/javascript">
+<script type="text/javascript">
+<!--
+function submitwin() {
+	document.send.submit();
+    setTimeout("window.close()", 5000);
+}
+function closewin() {
+    window.close();
+}
+// -->
+</script>
+
+<title>鏡置き場</title>
+<link rel="stylesheet" type="text/css" href="/kagamin.css" />
+</head>
+
+<body>
+
+<DIV align="center">
+
+<hr width="90%" size="1">
+<table width="90%">
+	<tr>
+		<td class="title">設定変更</td>
+	</tr>
+</table>
+
+<hr width="90%" size="1">
+<br>
+
+
+<form method="get" name=send action="/set.html">
+<input type="hidden" name="port" value="<PORT>">
+<input type="hidden" name="password" value="<PASSWORD>">
+
+<table align="center">
+	<tr>
+		<td class="category">
+			パスワード
+		</td>
+		<td>
+			<input size="10" type="text" name="new_password" value="<PASSWORD>">
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			コメント
+		</td>
+		<td>
+			<input size="50" type="text" name="comment" value="<COMMENT>">
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			配信URLの表示
+		</td>
+		<td>
+			<input size="50" type="radio" name="radio" value="on" <URL_ON>>表示
+			<input size="50" type="radio" name="radio" value="off" <URL_OFF>>非表示
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			親リダイレクト
+		</td>
+		<td>
+			<input type="radio" name="redir_p" size="50" value="on" <REDIR_P_ON>>許可
+			<input type="radio" name="redir_p" size="50" value="off" <REDIR_P_OFF>>不許可
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			子リダイレクト
+		</td>
+		<td>
+			<input type="radio" name="redir_c" size="50" value="on" <REDIR_C_ON>>許可
+			<input type="radio" name="redir_c" size="50" value="off" <REDIR_C_OFF>>不許可
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			リザーブIP登録
+		</td>
+		<td>
+			<input size="50" type="text" name="reserve" value="<RESERVE_LIST>">
+		</td>
+	</tr>
+<!-- 実況URL入力を使いたい人はコメントアウト解除すれば使えます
+	<tr>
+		<td class="category">
+			実況URL
+		</td>
+		<td>
+			<input size="50" type="text" name="url" value="<LIVE_URL>">
+		</td>
+	</tr>
+-->
+</table>
+<hr width="90%" size=1>
+<table align="center">
+	<tr>
+		<td>
+			<input type="button" value=" 設 定 " onclick="submitwin();" onkeypress="submitwin();">
+			<input type="button" value="閉じる" onclick="closewin();" onkeypress="closewin();">
+		</td>
+	</tr>
+</table>
+
+<hr width="90%" size=1>
+<br>
+
+<table align = "center">
+	<tr>
+		<td class="category">
+			パスワード
+		</td>
+		<td>
+			設定変更・切断用のパスワードを変更できます。
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			コメント
+		</td>
+		<td>
+			コメント内容を変更できます。日本語での入力が可能です。
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			配信URLの表示
+		</td>
+		<td>
+			入力したURLを表示させるかどうか設定できます。
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			親リダイレクト
+		</td>
+		<td>
+			美人になったとき、インポート元へのリダイレクト応答を<br>
+			返すかどうか設定できます。
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			子リダイレクト
+		</td>
+		<td>
+			美人になったとき、子鏡へのリダイレクト応答を<br>
+			返すかどうか設定できます。
+		</td>
+	</tr>
+	<tr>
+		<td class="category">
+			リザーブIP登録
+		</td>
+		<td>
+			リザーブIPをカンマ区切りで最大<RESERVE_NUM>個まで入力できます。<br>
+			登録しない場合は空欄のままで問題ありません。
+		</td>
+	</tr>
+<!--
+	<tr>
+		<td class="category">
+			実況URL
+		</td>
+		<td>
+			実況スレッドURLを登録できます。<br>
+                        <small><LIVEOUT_URL></small> と<br>
+                        前方一致する必要があります。<br>
+			登録すると鏡置き場トップに表示されます。<br>
+                        登録しない場合は空欄のままで問題ありません。
+		</td>
+	</tr>
+-->
+</table>
+</form>
+
+
+</DIV>
+</body>
+</html>

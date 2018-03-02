@@ -1,0 +1,19 @@
+ポート状態表示
+
+配信元URL: <SRC_URL>
+コメント:  <COMMENT>
+実況URL:   <LIVE_URL>
+
+接続時間:         <TIME>
+現在の接続数:     <CONN> / <MAXCONN>
+実測ビットレート: <CURRENT>
+申告ビットレート: <BITRATE>
+帯域制限:         <BANDWIDTH>
+
+ビジーカウンタ:   <BUSYCOUNT>
+IMエラーカウンタ: <IMPORT_ERROR>
+EXエラーカウンタ: <EXPORT_ERROR>
+
+子鏡情報:<CHILD>
+
+バージョン:<VERSION>

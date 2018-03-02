@@ -1,0 +1,36 @@
+body {
+	color:#800000;
+	font-size:90%;
+	background-color:#FFFFEE;
+}
+
+a:link {
+	color:#0000EE;
+}
+
+a:active {
+	color:#0000EE;
+}
+
+a:visited {
+	color:#0000EE;
+}
+
+a:hover {
+	color:#0000EE;
+}
+
+.title {
+	color:#FFFFFF;
+	font-weight:bold;
+	text-align:center;
+	background-color:#aa4400;
+}
+
+.category {
+	color:#800000;
+	font-size:90%;
+	font-weight:bold;
+	text-align:center;
+	background-color:#eeaa88;
+}
