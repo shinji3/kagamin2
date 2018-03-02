@@ -669,7 +669,6 @@ namespace Kagamin2
                 //Status.HeadRspMsg11 = ms1.ToArray();
                 Status.HeadRspMsg10[7] = 0x30;  //HTTP1.0
                 //Status.HeadRspMsg11[7] = 0x31;  //HTTP1.1
-
             }
             catch (KagamiException ke)
             {
@@ -1145,7 +1144,6 @@ namespace Kagamin2
                     "X-Server: " + Front.AppName + "\r\n" +
                     "Connection: close\r\n" +
                     "Content-Type: application/x-mms-framed\r\n\r\n";
-
                 //データ取得応答ヘッダを保持
                 MemoryStream ms;
                 ms = new MemoryStream();
@@ -2054,7 +2052,7 @@ namespace Kagamin2
                 count = enc.GetBytes(str).Length;
                 ms3.Write(enc.GetBytes(str), 0, count);
                 Status.HeadRspMsg10 = ms3.ToArray();
-                //Status.HeadRspMsg11 = ms1.ToArray();
+                //Status.HeadRspMsg11 = ms3.ToArray();
                 Status.HeadRspMsg10[7] = 0x30;  //HTTP1.0
                 //Status.HeadRspMsg11[7] = 0x31;  //HTTP1.1
 
