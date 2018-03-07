@@ -374,7 +374,14 @@ namespace Kagamin2
             if (ImportURL == "")
             {
                 ImportURL = "待機中";
-                Type = 1; // 外側接続
+                if (Front.Hp.UseHP)
+                {
+                    Type = 1; // 外側接続
+                }
+                else if (Front.Opt.EnablePush)
+                {
+                    Type = 2; // Push配信
+                }
             }
             else
             {

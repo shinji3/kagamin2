@@ -1308,7 +1308,7 @@ namespace Kagamin2
         {
             int _port;
 
-            if (!Front.Hp.UseHP && importURL.Text == "")
+            if (!Front.Hp.UseHP && !Front.Opt.EnablePush && importURL.Text == "")
             {
                 MessageBox.Show("インポートURLを入力してください。", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
