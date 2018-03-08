@@ -1475,13 +1475,13 @@ namespace Kagamin2
                     // Kick先には503を送る
                     // 相手のリクエストを受け取ってから返信
                     char[] end = { '\n', '\n' };
-                    byte[] reqBytes = new byte[5000];
+                    byte[] reqBytes = new byte[10000];
                     Encoding _enc = Encoding.ASCII; // "euc-jp"
                     int i = 0;
                     int j = 0;
                     try
                     {
-                        for (; j < 5000; j++)
+                        for (; j < 10000; j++)
                         {
                             _sock.Receive(reqBytes, j, 1, System.Net.Sockets.SocketFlags.None);
                             if (reqBytes[j] == '\r') continue;
@@ -1660,14 +1660,14 @@ namespace Kagamin2
                 System.Text.Encoding enc;
 
                 char[] end = { '\n', '\n' };
-                byte[] reqBytes = new byte[5000];
+                byte[] reqBytes = new byte[10000];
                 int i = 0;
                 int j = 0;
 
                 //リクエストヘッダの改行コードは普通CR+LFだけどLFのみにも対応する
                 try
                 {
-                    for (; j < 5000; j++)
+                    for (; j < 10000; j++)
                     {
                         sock.Receive(reqBytes, j, 1, System.Net.Sockets.SocketFlags.None);
                         if (reqBytes[j] == '\r') continue;
@@ -1712,7 +1712,7 @@ namespace Kagamin2
                     Front.AddLogDetail("RecvReqMsg(Push)Sta-----\r\n" +
                                  enc.GetString(reqBytes, 0, j) +
                                  "\r\nRecvReqMsg(Push)End-----");
-                    Front.AddLogData(1, Status, "リクエスト長が長すぎるので切断します(over5KB) [" + _ip + "]");
+                    Front.AddLogData(1, Status, "リクエスト長が長すぎるので切断します(over10KB) [" + _ip + "]");
                     // 連打しないように切断を遅延させる
                     Thread.Sleep((int)Front.Sock.SockCloseDelay);
                     //切断するためnull返却
