@@ -657,7 +657,6 @@ namespace Kagamin2
                     "Pragma: client-id=3320437311\r\n" +
                     "Pragma: features=\"broadcast,playlist\"\r\n" +
                     "X-Server: " + Front.AppName + "\r\n" +
-                    "Connection: Keep-Alive\r\n" +
                     "Content-Type: application/vnd.ms.wms-hdr.asfv1\r\n" +
                     "Content-Length: " + Status.HeadStream.Length + "\r\n\r\n";
                 //ヘッダ上と下を繋げるメモリストリーム
@@ -2043,7 +2042,6 @@ namespace Kagamin2
                     "Pragma: client-id=3320437311\r\n" +
                     "Pragma: features=\"broadcast,playlist\"\r\n" +
                     "X-Server: " + Front.AppName + "\r\n" +
-                    "Connection: Keep-Alive\r\n" +
                     "Content-Type: application/vnd.ms.wms-hdr.asfv1\r\n" +
                     "Content-Length: " + Status.HeadStream.Length + "\r\n\r\n";
                 //ヘッダ上と下を繋げるメモリストリーム
