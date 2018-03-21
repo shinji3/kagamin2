@@ -655,7 +655,7 @@ namespace Kagamin2
                     "Cache-Control: no-cache\r\n" +
                     "Pragma: no-cache\r\n" +
                     "Pragma: client-id=3320437311\r\n" +
-                    "Pragma: features=\"broadcast,playlist\"\r\n" +
+                    "Pragma: features=\"seekable,stridable\"\r\n" +
                     "X-Server: " + Front.AppName + "\r\n" +
                     "Content-Type: application/vnd.ms.wms-hdr.asfv1\r\n" +
                     "Content-Length: " + Status.HeadStream.Length + "\r\n\r\n";
@@ -1139,7 +1139,7 @@ namespace Kagamin2
                     "Cache-Control: no-cache\r\n" +
                     "Pragma: no-cache\r\n" +
                     "Pragma: client-id=3320437311\r\n" +
-                    "Pragma: features=\"broadcast,playlist\"\r\n" +
+                    "Pragma: features=\"seekable,stridable\"\r\n" +
                     "X-Server: " + Front.AppName + "\r\n" +
                     "Connection: close\r\n" +
                     "Content-Type: application/x-mms-framed\r\n\r\n";
@@ -1941,7 +1941,7 @@ namespace Kagamin2
                 "Cache-Control: no-cache\r\n" +
                 "Pragma: no-cache\r\n" +
                 "Pragma: client-id=3320437311\r\n" +
-                "Pragma: features=\"broadcast,playlist\"\r\n" +
+                "Pragma: features=\"seekable,stridable\"\r\n" +
                 "X-Server: " + Front.AppName + "\r\n" +
                 "Connection: close\r\n" +
                 "Content-Type: application/x-mms-framed\r\n\r\n";
@@ -2040,7 +2040,7 @@ namespace Kagamin2
                     "Cache-Control: no-cache\r\n" +
                     "Pragma: no-cache\r\n" +
                     "Pragma: client-id=3320437311\r\n" +
-                    "Pragma: features=\"broadcast,playlist\"\r\n" +
+                    "Pragma: features=\"seekable,stridable\"\r\n" +
                     "X-Server: " + Front.AppName + "\r\n" +
                     "Content-Type: application/vnd.ms.wms-hdr.asfv1\r\n" +
                     "Content-Length: " + Status.HeadStream.Length + "\r\n\r\n";
