@@ -272,9 +272,7 @@ namespace Kagamin2
                     }
                     // äOïîê⁄ë±ë“ÇøÇ§ÇØÇ…ñﬂÇÈéûÇÕí«â¡Ç≈à»â∫Ç‡çÌèú
                     Status.DataRspMsg10 = null;
-                    //Status.DataRspMsg11 = null;
                     Status.HeadRspMsg10 = null;
-                    //Status.HeadRspMsg11 = null;
                     Status.HeadStream = null;
                     //îOÇÃÇΩÇﬂ
                     try
@@ -665,9 +663,6 @@ namespace Kagamin2
                 count = enc.GetBytes(str).Length;
                 ms1.Write(enc.GetBytes(str), 0, count);
                 Status.HeadRspMsg10 = ms1.ToArray();
-                //Status.HeadRspMsg11 = ms1.ToArray();
-                Status.HeadRspMsg10[7] = 0x30;  //HTTP1.0
-                //Status.HeadRspMsg11[7] = 0x31;  //HTTP1.1
             }
             catch (KagamiException ke)
             {
@@ -1149,9 +1144,6 @@ namespace Kagamin2
                 count = enc.GetBytes(str).Length;
                 ms.Write(enc.GetBytes(str), 0, count);
                 Status.DataRspMsg10 = ms.ToArray();
-                //Status.DataRspMsg11 = ms.ToArray();
-                Status.DataRspMsg10[7] = 0x30;  //HTTP1.0
-                //Status.DataRspMsg11[7] = 0x31;  //HTTP1.1
             }
             catch (KagamiException ke)
             {
@@ -1953,9 +1945,6 @@ namespace Kagamin2
             int count = enc.GetBytes(str).Length;
             ms1.Write(enc.GetBytes(str), 0, count);
             Status.DataRspMsg10 = ms1.ToArray();
-            //Status.DataRspMsg11 = ms1.ToArray();
-            Status.DataRspMsg10[7] = 0x30;  //HTTP1.0
-            //Status.DataRspMsg11[7] = 0x31;  //HTTP1.1
 
             byte[] ack = new byte[1];
             byte[] asf_type = new byte[] { 0x24, 0x48 };    // ASF_HEADER
@@ -2050,9 +2039,6 @@ namespace Kagamin2
                 count = enc.GetBytes(str).Length;
                 ms3.Write(enc.GetBytes(str), 0, count);
                 Status.HeadRspMsg10 = ms3.ToArray();
-                //Status.HeadRspMsg11 = ms3.ToArray();
-                Status.HeadRspMsg10[7] = 0x30;  //HTTP1.0
-                //Status.HeadRspMsg11[7] = 0x31;  //HTTP1.1
 
                 if (Status.ImportURL == "ë“ã@íÜ")
                 {

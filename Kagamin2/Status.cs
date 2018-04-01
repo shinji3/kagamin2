@@ -208,10 +208,6 @@ namespace Kagamin2
         /// </summary>
         public byte[] HeadRspMsg10 = null;
         /// <summary>
-        /// ヘッダ取得応答/HTTP1.1
-        /// </summary>
-        //public byte[] HeadRspMsg11 = null;
-        /// <summary>
         /// ヘッダストリーム情報
         /// </summary>
         public byte[] HeadStream = null;
@@ -219,10 +215,6 @@ namespace Kagamin2
         /// データ取得応答/HTTP1.0
         /// </summary>
         public byte[] DataRspMsg10 = null;
-        /// <summary>
-        /// データ取得応答/HTTP1.1
-        /// </summary>
-        //public byte[] DataRspMsg11 = null;
         /// <summary>
         /// StreamSwitchCount
         /// </summary>

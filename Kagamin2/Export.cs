@@ -668,22 +668,10 @@ namespace Kagamin2
                             try
                             {
                                 // 応答ヘッダ送信
-                                /* かがみんの応答は必ずHTTP/1.0
-                                if (str.IndexOf("HTTP/1.1") > -1)
-                                {
-                                    Front.AddLogDetail("SendRspMsg(Client)Sta-----\r\n" +
-                                                                enc.GetString(Status.DataRspMsg11) +
-                                                                "\r\nSendRspMsg(Client)End-----");
-                                    sock.Send(Status.DataRspMsg11);
-                                }
-                                else
-                                {
-                                */
-                                    Front.AddLogDetail("SendRspMsg(Client)Sta-----\r\n" +
-                                                                enc.GetString(Status.DataRspMsg10) +
-                                                                "\r\nSendRspMsg(Client)End-----");
-                                    sock.Send(Status.DataRspMsg10);
-                                //}
+                                Front.AddLogDetail("SendRspMsg(Client)Sta-----\r\n" +
+                                                            enc.GetString(Status.DataRspMsg10) +
+                                                            "\r\nSendRspMsg(Client)End-----");
+                                sock.Send(Status.DataRspMsg10);
                                 // ヘッダストリーム送信
                                 sock.Send(Status.HeadStream);
                             }
@@ -710,22 +698,10 @@ namespace Kagamin2
                             try
                             {
                                 // 応答ヘッダ送信
-                                /* かがみんの応答は必ずHTTP/1.0
-                                if (str.IndexOf("HTTP/1.1") > -1)
-                                {
-                                    Front.AddLogDetail("SendRspMsg(Client)Sta-----\r\n" +
-                                                                enc.GetString(Status.HeadRspMsg11) +
-                                                                "\r\nSendRspMsg(Client)End-----");
-                                    sock.Send(Status.HeadRspMsg11);
-                                }
-                                else
-                                {
-                                */
-                                    Front.AddLogDetail("SendRspMsg(Client)Sta-----\r\n" +
-                                                                enc.GetString(Status.HeadRspMsg10) +
-                                                                "\r\nSendRspMsg(Client)End-----");
-                                    sock.Send(Status.HeadRspMsg10);
-                                //}
+                                Front.AddLogDetail("SendRspMsg(Client)Sta-----\r\n" +
+                                                            enc.GetString(Status.HeadRspMsg10) +
+                                                            "\r\nSendRspMsg(Client)End-----");
+                                sock.Send(Status.HeadRspMsg10);
                                 // ヘッダストリーム送信
                                 sock.Send(Status.HeadStream);
                             }
