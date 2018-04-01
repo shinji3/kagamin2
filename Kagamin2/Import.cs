@@ -148,7 +148,7 @@ namespace Kagamin2
                                 // WebエントランスからPush配信停止要求が来るか
                                 // Push配信受付タイムアウトになるか、
                                 // GUIからの切断要求が来るまでListen継続
-                                while (Status.ImportURL == "待機中" && Status.Type == 2 && _timeout_cnt <= 300 && Status.RunStatus)
+                                while (Status.ImportURL == "待機中" && Status.Type == 2 && (_timeout_cnt <= 300 || !Front.Hp.UseHP) && Status.RunStatus)
                                 {
                                     //Accept待ちのチェック
                                     if (_listener.Pending() == true)
