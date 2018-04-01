@@ -152,7 +152,7 @@ namespace Kagamin2
             e.Item = _item;
             e.Mode = _mode;
 #if DEBUG
-            e.ThreadId = System.AppDomain.GetCurrentThreadId();
+            e.ThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
 #endif
             if (UpdateClient != null)
                 UpdateClient(null, e);
@@ -174,7 +174,7 @@ namespace Kagamin2
             e.Item = _item;
             e.Mode = _mode;
 #if DEBUG
-            e.ThreadId = System.AppDomain.GetCurrentThreadId();
+            e.ThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
 #endif
             if (UpdateReserve != null)
                 UpdateReserve(null, e);
@@ -194,7 +194,7 @@ namespace Kagamin2
             e.Item = _item;
             e.Mode = _mode;
 #if DEBUG
-            e.ThreadId = System.AppDomain.GetCurrentThreadId();
+            e.ThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
 #endif
             if (UpdateKick != null)
                 UpdateKick(null, e);
@@ -216,7 +216,7 @@ namespace Kagamin2
             e.Item = _item;
             e.Mode = _logLv;
 #if DEBUG
-            e.ThreadId = System.AppDomain.GetCurrentThreadId();
+            e.ThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
 #endif
             if (UpdateLog != null)
                 UpdateLog(null, e);
