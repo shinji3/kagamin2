@@ -31,30 +31,7 @@ namespace Kagamin2
         {
             get
             {
-                string str = "";
-                Match index = Regex.Match(ImportURL, @"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:");
-                if (index.Success)
-                {
-                    str = ImportURL.Substring(index.Index, index.Length - 1);
-                }
-                else
-                {
-                    index = Regex.Match(ImportURL, @"http:\/\/[a-z0-9A-Z._-]+:");
-                    if (index.Success)
-                    {
-                        str = ImportURL.Substring(index.Index + 7, index.Length - 8);
-                    }
-                    index = Regex.Match(ImportURL, @"mms:\/\/[a-z0-9A-Z._-]+:");
-                    if (index.Success)
-                    {
-                        str = ImportURL.Substring(index.Index + 6, index.Length - 7);
-                    }
-                    if (str == "")
-                    {
-                        str = ImportURL.Split(':')[0];
-                    }
-                }
-                return str;
+                return new Uri(ImportURL).Host;
             }
         }
 
@@ -65,8 +42,7 @@ namespace Kagamin2
         {
             get
             {
-                Match index = Regex.Match(ImportURL, @":\d{1,5}");
-                return int.Parse(ImportURL.Substring(index.Index + 1, index.Length - 1));
+                return new Uri(ImportURL).Port;
             }
         }
 
