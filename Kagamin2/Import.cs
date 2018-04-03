@@ -166,7 +166,7 @@ namespace Kagamin2
                                 }
                                 // 300秒を超えたらタイムアウトで外部接続状態に戻る
                                 // 値はGUI上から変えられるようにしよう。後で。。
-                                if (_timeout_cnt > 300)
+                                if (_timeout_cnt > 300 && Front.Hp.UseHP)
                                     _timeout_flg = true;
                             }
                             finally
