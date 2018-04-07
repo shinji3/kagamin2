@@ -223,34 +223,34 @@ namespace HybridDSP.Net.HTTP
         /// <param name="istr"></param>
         public virtual void Read(Stream istr)
         {
-	        int c = istr.ReadByte();
-	        while (c != EOF && c != '\r' && c != '\n')
-	        {
-		        string name = "";
-		        string value = "";
+            int c = istr.ReadByte();
+            while (c != EOF && c != '\r' && c != '\n')
+            {
+                string name = "";
+                string value = "";
 
-		        while (c != EOF && c != ':' && c != '\n') { name += (char)c; c = istr.ReadByte(); }
-		        if (c == '\n') { c = istr.ReadByte(); continue; } // ignore invalid header lines
+                while (c != EOF && c != ':' && c != '\n') { name += (char)c; c = istr.ReadByte(); }
+                if (c == '\n') { c = istr.ReadByte(); continue; } // ignore invalid header lines
                 if (c != ':') throw new HTTPMessageException("Field name too long/no colon found");
-		        if (c != EOF) c = istr.ReadByte(); // ':'
-		        while (char.IsWhiteSpace((char)c)) c = istr.ReadByte();
-		        while (c != EOF && c != '\r' && c != '\n') { value += (char)c; c = istr.ReadByte(); }
-		        if (c == '\r') c = istr.ReadByte();
-		        if (c == '\n')
-			        c = istr.ReadByte();
-		        else if (c != EOF)
+                if (c != EOF) c = istr.ReadByte(); // ':'
+                while (char.IsWhiteSpace((char)c)) c = istr.ReadByte();
+                while (c != EOF && c != '\r' && c != '\n') { value += (char)c; c = istr.ReadByte(); }
+                if (c == '\r') c = istr.ReadByte();
+                if (c == '\n')
+                    c = istr.ReadByte();
+                else if (c != EOF)
                     throw new HTTPMessageException("Field value too long/no CRLF found");
-		        while (c == ' ' || c == '\t') // folding
-		        {
-			        while (c != EOF && c != '\r' && c != '\n') { value += (char)c; c = istr.ReadByte(); }
-			        if (c == '\r') c = istr.ReadByte();
-			        if (c == '\n')
-				        c = istr.ReadByte();
-			        else if (c != EOF)
+                while (c == ' ' || c == '\t') // folding
+                {
+                    while (c != EOF && c != '\r' && c != '\n') { value += (char)c; c = istr.ReadByte(); }
+                    if (c == '\r') c = istr.ReadByte();
+                    if (c == '\n')
+                        c = istr.ReadByte();
+                    else if (c != EOF)
                         throw new HTTPMessageException("Folded field value too long/no CRLF found");
-		        }
-		        Add(name, value);
-	        }
+                }
+                Add(name, value);
+            }
 
             _lastRead = c;
         }
