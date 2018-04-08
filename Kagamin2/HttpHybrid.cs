@@ -692,6 +692,7 @@ namespace Kagamin2
                                     {
                                         // 設定者がローカルアドレスなら一律許容
                                         if (request.RemoteAddr.StartsWith("10.") ||         // ClassA
+                                            request.RemoteAddr.StartsWith("172.16.") ||     // ClassB
                                             request.RemoteAddr.StartsWith("192.168.") ||    // ClassC
                                             request.RemoteAddr.StartsWith("127."))          // LoopBack
                                         {
