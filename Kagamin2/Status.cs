@@ -36,6 +36,17 @@ namespace Kagamin2
         }
 
         /// <summary>
+        /// Import先URL用ホスト名
+        /// </summary>
+        public string ImportHostURL
+        {
+            get
+            {
+                return new Uri(ImportURL).Host;
+            }
+        }
+
+        /// <summary>
         /// Import先Port番号
         /// </summary>
         public int ImportPort
