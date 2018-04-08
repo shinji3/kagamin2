@@ -12,22 +12,6 @@ using System.Windows.Forms;
 
 namespace Kagamin2
 {
-    /*
-    public class ClientEvent : EventArgs
-    {
-        public Status Status;
-        public int Id;
-        public Socket Sock;
-        public string UserAgent;
-
-        /// <summary>
-        /// 0=Add
-        /// 1=Delete
-        /// </summary>
-        public int EventType;
-    }
-    */
-
     /// <summary>
     /// クライアント全体を管理するクラス
     /// </summary>
