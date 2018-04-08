@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using System.Text.RegularExpressions;
+using System.Net;
 
 namespace Kagamin2
 {
@@ -152,7 +153,7 @@ namespace Kagamin2
             e.Item = _item;
             e.Mode = _mode;
 #if DEBUG
-            e.ThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            e.ThreadId = Thread.CurrentThread.ManagedThreadId;
 #endif
             if (UpdateClient != null)
                 UpdateClient(null, e);
@@ -174,7 +175,7 @@ namespace Kagamin2
             e.Item = _item;
             e.Mode = _mode;
 #if DEBUG
-            e.ThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            e.ThreadId = Thread.CurrentThread.ManagedThreadId;
 #endif
             if (UpdateReserve != null)
                 UpdateReserve(null, e);
@@ -194,7 +195,7 @@ namespace Kagamin2
             e.Item = _item;
             e.Mode = _mode;
 #if DEBUG
-            e.ThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            e.ThreadId = Thread.CurrentThread.ManagedThreadId;
 #endif
             if (UpdateKick != null)
                 UpdateKick(null, e);
@@ -216,7 +217,7 @@ namespace Kagamin2
             e.Item = _item;
             e.Mode = _logLv;
 #if DEBUG
-            e.ThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            e.ThreadId = Thread.CurrentThread.ManagedThreadId;
 #endif
             if (UpdateLog != null)
                 UpdateLog(null, e);
@@ -904,12 +905,12 @@ namespace Kagamin2
         static public void LoadSetting()
         {
             // ウインドウ位置・サイズが読み出せなかった場合の初期値計算
-            int x = (int)(System.Windows.Forms.Screen.PrimaryScreen.Bounds.Width - Form.W) / 2; if (x < 0) x = 0;
-            int y = (int)(System.Windows.Forms.Screen.PrimaryScreen.Bounds.Height - Form.H) / 2; if (y < 0) y = 0;
+            int x = (int)(Screen.PrimaryScreen.Bounds.Width - Form.W) / 2; if (x < 0) x = 0;
+            int y = (int)(Screen.PrimaryScreen.Bounds.Height - Form.H) / 2; if (y < 0) y = 0;
             int w = Form.W;
             int h = Form.H;
 
-            string iniFile = System.Windows.Forms.Application.StartupPath + "/setting.ini";
+            string iniFile = Application.StartupPath + "/setting.ini";
             StringBuilder sb = new StringBuilder(1024);
 
             IniFileHandler.GetPrivateProfileString(                         "ACL",      "DENY_HP_IP",           "",     sb, (uint)sb.Capacity, iniFile);    Acl.HpDenyRemoteHost = new List<string>(sb.ToString().Split(','));
@@ -1054,7 +1055,7 @@ namespace Kagamin2
         /// </summary>
         static public void SaveSetting()
         {
-            string iniFile = System.Windows.Forms.Application.StartupPath + "/setting.ini";
+            string iniFile = Application.StartupPath + "/setting.ini";
             string str = "";
 
             // List<string> → カンマ区切りstring変換
@@ -1211,7 +1212,7 @@ namespace Kagamin2
             // 指定セクションのキーの一覧を得る
             byte[] ar1 = new byte[1024];
             uint resultSize1 = IniFileHandler.GetPrivateProfileStringByByteArray("アプリ1", null, "default", ar1, (uint)ar1.Length, @"c:\sample.ini");
-            string result1 = System.Text.Encoding.Default.GetString(ar1, 0, (int)resultSize1 - 1);
+            string result1 = Encoding.Default.GetString(ar1, 0, (int)resultSize1 - 1);
             string[] keys = result1.Split('\0');
             foreach (string key in keys)
             {
@@ -1221,7 +1222,7 @@ namespace Kagamin2
             // 指定ファイルのセクションの一覧を得る
             byte[] ar2 = new byte[1024];
             uint resultSize2 = IniFileHandler.GetPrivateProfileStringByByteArray(null, null, "default", ar2, (uint)ar2.Length, @"c:\sample.ini");
-            string result2 = System.Text.Encoding.Default.GetString(ar2, 0, (int)resultSize2 - 1);
+            string result2 = Encoding.Default.GetString(ar2, 0, (int)resultSize2 - 1);
             string[] sections = result2.Split('\0');
             foreach (string section in sections)
             {
@@ -1403,9 +1404,9 @@ namespace Kagamin2
             if (GlobalIP != "" && GlobalIPGetTime > DateTime.Now)
                 return true;
             //WebClientの作成
-            System.Net.WebClient wc = new System.Net.WebClient();
+            WebClient wc = new WebClient();
             //文字コードを指定
-            wc.Encoding = System.Text.Encoding.GetEncoding(51932);
+            wc.Encoding = Encoding.GetEncoding(51932);
 
             string str;
             try
@@ -1457,7 +1458,7 @@ namespace Kagamin2
         /// </summary>
         /// <param name="bytes"></param>
         /// <returns></returns>
-        static public System.Text.Encoding GetCode(byte[] bytes)
+        static public Encoding GetCode(byte[] bytes)
         {
             return GetCode(bytes, bytes.Length);
         }
@@ -1467,7 +1468,7 @@ namespace Kagamin2
         /// <param name="bytes"></param>
         /// <param name="len"></param>
         /// <returns></returns>
-        static public System.Text.Encoding GetCode(byte[] bytes,int len)
+        static public Encoding GetCode(byte[] bytes,int len)
         {
             const byte bESC = 0x1B;
             const byte bAT = 0x40;
@@ -1506,7 +1507,7 @@ namespace Kagamin2
                 if (ucs2 > 0)
                     //JIS
                     //ucs2(Unicode)
-                    return System.Text.Encoding.Unicode;
+                    return Encoding.Unicode;
                 else
                     //binary
                     return null;
@@ -1522,38 +1523,38 @@ namespace Kagamin2
                     if (b2 >= 0x80)
                         //not Japanese
                         //ASCII
-                        return System.Text.Encoding.ASCII;
+                        return Encoding.ASCII;
                     else if (len - 2 > i &&
                         b2 == bDollar && bytes[i + 2] == bAT)
                         //JIS_0208 1978
                         //JIS
-                        return System.Text.Encoding.GetEncoding(50220);
+                        return Encoding.GetEncoding(50220);
                     else if (len - 2 > i &&
                         b2 == bDollar && bytes[i + 2] == bB)
                         //JIS_0208 1983
                         //JIS
-                        return System.Text.Encoding.GetEncoding(50220);
+                        return Encoding.GetEncoding(50220);
                     else if (len - 5 > i &&
                         b2 == bAnd && bytes[i + 2] == bAT && bytes[i + 3] == bESC &&
                         bytes[i + 4] == bDollar && bytes[i + 5] == bB)
                         //JIS_0208 1990
                         //JIS
-                        return System.Text.Encoding.GetEncoding(50220);
+                        return Encoding.GetEncoding(50220);
                     else if (len - 3 > i &&
                         b2 == bDollar && bytes[i + 2] == bOP && bytes[i + 3] == bD)
                         //JIS_0212
                         //JIS
-                        return System.Text.Encoding.GetEncoding(50220);
+                        return Encoding.GetEncoding(50220);
                     else if (len - 2 > i &&
                         b2 == bOP && (bytes[i + 2] == bB || bytes[i + 2] == bJ))
                         //JIS_ASC
                         //JIS
-                        return System.Text.Encoding.GetEncoding(50220);
+                        return Encoding.GetEncoding(50220);
                     else if (len - 2 > i &&
                         b2 == bOP && bytes[i + 2] == bI)
                         //JIS_KANA
                         //JIS
-                        return System.Text.Encoding.GetEncoding(50220);
+                        return Encoding.GetEncoding(50220);
                 }
             }
 
@@ -1606,16 +1607,16 @@ namespace Kagamin2
 
             if (euc > sjis && euc > utf8)
                 //EUC
-                return System.Text.Encoding.GetEncoding(51932);
+                return Encoding.GetEncoding(51932);
             else if (sjis > euc && sjis > utf8)
                 //SJIS
-                return System.Text.Encoding.GetEncoding(932);
+                return Encoding.GetEncoding(932);
             else if (utf8 > euc && utf8 > sjis)
                 //UTF8
-                return System.Text.Encoding.UTF8;
+                return Encoding.UTF8;
 
             // Unknown... ASCII
-            return System.Text.Encoding.ASCII;
+            return Encoding.ASCII;
         }
         /// <summary>
         /// 帯域をKbpsで統一する
@@ -1659,7 +1660,7 @@ namespace Kagamin2
         {
             DateTime _dtNow = DateTime.Now;
             #if DEBUG
-            System.Diagnostics.Trace.WriteLine("■NORMAL" + _logLv + _dtNow.ToString("[MM/dd HH:mm:ss]") + "[" + _status.MyPort + "]" + _content);
+            Trace.WriteLine("■NORMAL" + _logLv + _dtNow.ToString("[MM/dd HH:mm:ss]") + "[" + _status.MyPort + "]" + _content);
             #endif
 
             try
@@ -1733,7 +1734,7 @@ namespace Kagamin2
             if (Front.Log.LogDetail)
             {
                 #if DEBUG
-                System.Diagnostics.Trace.WriteLine("■DETAIL" + _dtNow.ToString("[MM/dd HH:mm:ss]") + _content);
+                Trace.WriteLine("■DETAIL" + _dtNow.ToString("[MM/dd HH:mm:ss]") + _content);
                 #endif
                 lock (Front.Log.KagamiLogFile)
                 {
@@ -1772,7 +1773,7 @@ namespace Kagamin2
             DateTime _dtNow = DateTime.Now;
             if (_pos == "帯域制限" || _pos == "KICKチェック")
                 return;
-            System.Diagnostics.Trace.WriteLine("■DEBUG" + _dtNow.ToString("[MM/dd HH:mm:ss]") + "[" + _pos + "]" + _content);
+            Trace.WriteLine("■DEBUG" + _dtNow.ToString("[MM/dd HH:mm:ss]") + "[" + _pos + "]" + _content);
             #endif
         }
         #endregion
