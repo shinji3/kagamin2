@@ -361,7 +361,8 @@ namespace Kagamin2
             {
 #if !DEBUG
                 // ローカルアドレスの子鏡は除外する
-                if (Ip.StartsWith("10.") ||       // ClassA
+                if (Ip == "::1" ||                // IPv6 LoopBack
+                    Ip.StartsWith("10.") ||       // ClassA
                     Ip.StartsWith("172.16.") ||   // ClassB
                     Ip.StartsWith("192.168.") ||  // ClassC
                     Ip.StartsWith("127."))        // LoopBack

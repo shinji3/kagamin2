@@ -31,7 +31,7 @@ namespace Kagamin2
         {
             get
             {
-                return new Uri(ImportURL).Host;
+                return new Uri(ImportURL).DnsSafeHost;
             }
         }
 
