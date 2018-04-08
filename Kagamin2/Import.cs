@@ -123,7 +123,7 @@ namespace Kagamin2
                             // Push配信利用要求が来たので、ポートを開けて待つ。
                             Front.AddLogData(0, Status, "Push配信受付ポートを起動します");
                             IPEndPoint _iep = new IPEndPoint(IPAddress.Any, Status.MyPort);
-                            System.Net.Sockets.TcpListener _listener = new System.Net.Sockets.TcpListener(_iep);
+                            TcpListener _listener = new TcpListener(_iep);
                             // Listen開始
                             try
                             {
@@ -154,7 +154,7 @@ namespace Kagamin2
                                     if (_listener.Pending() == true)
                                     {
                                         //Accept実施
-                                        System.Net.Sockets.Socket _sock = _listener.AcceptSocket();
+                                        Socket _sock = _listener.AcceptSocket();
                                         Thread _th = new Thread(PushReqTask);
                                         _th.Start(_sock);
                                     }
@@ -182,7 +182,7 @@ namespace Kagamin2
                                     //リスナーで待機しているクライアントをすべて切断する
                                     while (_listener.Pending())
                                     {
-                                        System.Net.Sockets.TcpClient _sock = _listener.AcceptTcpClient();
+                                        TcpClient _sock = _listener.AcceptTcpClient();
                                         _sock.Close();
                                     }
                                 }
@@ -406,8 +406,8 @@ namespace Kagamin2
             try
             {
                 //Socketの作成
-                sock = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork,
-                    System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
+                sock = new Socket(AddressFamily.InterNetwork,
+                    SocketType.Stream, ProtocolType.Tcp);
                 IPAddress hostadd = Dns.GetHostAddresses(Status.ImportHost)[0];
                 IPEndPoint ephost = new System.Net.IPEndPoint(hostadd, Status.ImportPort);
 
@@ -444,7 +444,7 @@ namespace Kagamin2
 
                 //リクエスト送信
                 Front.AddLogDetail("SendReqMsg(Head)Sta-----\r\n" + reqMsg + "\r\nSendReqMsg(Head)End-----");
-                sock.Send(reqBytes, reqBytes.Length, System.Net.Sockets.SocketFlags.None);
+                sock.Send(reqBytes, reqBytes.Length, SocketFlags.None);
 
                 //まずはHTTP応答ヘッダまで取得
                 byte[] ack = new byte[1];
@@ -672,7 +672,7 @@ namespace Kagamin2
                     PlaySound(Front.Opt.SndConnNgFile);
                 throw new KagamiException(ke.Message);
             }
-            catch (System.Net.Sockets.SocketException se)
+            catch (SocketException se)
             {
                 sock.Close();
                 // IM接続NG音が設定されていたら再生
@@ -995,8 +995,8 @@ namespace Kagamin2
             try
             {
                 //Socketの作成
-                sock = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork,
-                    System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
+                sock = new Socket(AddressFamily.InterNetwork,
+                    SocketType.Stream, ProtocolType.Tcp);
                 IPAddress hostadd = Dns.GetHostAddresses(Status.ImportHost)[0];
                 IPEndPoint ephost = new System.Net.IPEndPoint(hostadd, Status.ImportPort);
 
@@ -1153,7 +1153,7 @@ namespace Kagamin2
                     PlaySound(Front.Opt.SndConnNgFile);
                 throw new KagamiException(ke.Message);
             }
-            catch (System.Net.Sockets.SocketException se)
+            catch (SocketException se)
             {
                 sock.Close();
                 // IM接続NG音が設定されていたら再生
@@ -1395,7 +1395,7 @@ namespace Kagamin2
                         PlaySound(Front.Opt.SndDiscFile);
                 }
             }
-            catch (System.Net.Sockets.SocketException se)
+            catch (SocketException se)
             {
                 Front.AddLogData(1, Status, "インポート受信エラー(wsa:" + se.ErrorCode + "/" + se.SocketErrorCode.ToString() + ")");
                 Status.ImportErrorContext = "インポート受信エラー(wsa:" + se.ErrorCode + "/" + se.SocketErrorCode.ToString() + ")";
@@ -1428,7 +1428,7 @@ namespace Kagamin2
         /// </summary>
         private void PushReqTask(object obj)
         {
-            Socket _sock = (System.Net.Sockets.Socket)obj;
+            Socket _sock = (Socket)obj;
             string _ua = "";
 
             _sock.SendTimeout = (int)Front.Sock.SockConnTimeout;       // Import接続 ヘッダ取得要求送信のタイムアウト値
@@ -1474,7 +1474,7 @@ namespace Kagamin2
                     {
                         for (; j < 5000; j++)
                         {
-                            _sock.Receive(reqBytes, j, 1, System.Net.Sockets.SocketFlags.None);
+                            _sock.Receive(reqBytes, j, 1, SocketFlags.None);
                             if (reqBytes[j] == '\r') continue;
                             if (reqBytes[j] == end[i]) i++; else i = 0;
                             if (i >= 2) break;
@@ -1638,7 +1638,7 @@ namespace Kagamin2
         /// </summary>
         /// <param name="sock">要求元のsocket</param>
         /// <returns>要求元のUserAgent</returns>
-        private string PushAcceptUser(System.Net.Sockets.Socket sock)
+        private string PushAcceptUser(Socket sock)
         {
             string _ip = ((IPEndPoint)sock.RemoteEndPoint).Address.ToString();
             int _port = ((IPEndPoint)sock.RemoteEndPoint).Port;
@@ -1660,7 +1660,7 @@ namespace Kagamin2
                 {
                     for (; j < 5000; j++)
                     {
-                        sock.Receive(reqBytes, j, 1, System.Net.Sockets.SocketFlags.None);
+                        sock.Receive(reqBytes, j, 1, SocketFlags.None);
                         if (reqBytes[j] == '\r') continue;
                         if (reqBytes[j] == end[i]) i++; else i = 0;
                         if (i >= 2) break;
@@ -2366,7 +2366,7 @@ namespace Kagamin2
                         PlaySound(Front.Opt.SndDiscFile);
                 }
             }
-            catch (System.Net.Sockets.SocketException se)
+            catch (SocketException se)
             {
                 Front.AddLogData(1, Status, "インポート受信エラー wsa:" + se.ErrorCode + "/" + se.SocketErrorCode.ToString());
                 Status.ImportError++;
