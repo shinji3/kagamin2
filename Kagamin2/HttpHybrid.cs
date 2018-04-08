@@ -702,10 +702,10 @@ namespace Kagamin2
                                         else
                                         {
                                             // インポートURLのIPアドレスを求める
-                                            System.Net.IPAddress hostadd;
+                                            IPAddress hostadd;
                                             try
                                             {
-                                                hostadd = System.Net.Dns.GetHostAddresses(imp)[0];
+                                                hostadd = Dns.GetHostAddresses(imp)[0];
                                                 if (hostadd.ToString() != request.RemoteAddr)
                                                 {
                                                     comment = "接続制限/インポートURLと設定者IPが一致しません";
@@ -737,7 +737,7 @@ namespace Kagamin2
                                             // IPに変換できないホスト名なら登録あきらめ
                                             try
                                             {
-                                                System.Net.IPAddress hostadd = System.Net.Dns.GetHostAddresses(reserve_list[cnt])[0];
+                                                IPAddress hostadd = Dns.GetHostAddresses(reserve_list[cnt])[0];
                                                 k.Status.AddReserve(hostadd.ToString());
                                             }
                                             catch { }
@@ -789,7 +789,7 @@ namespace Kagamin2
                                             // IPに変換できないホスト名なら登録あきらめ
                                             try
                                             {
-                                                System.Net.IPAddress hostadd = System.Net.Dns.GetHostAddresses(reserve_list[cnt])[0];
+                                                IPAddress hostadd = Dns.GetHostAddresses(reserve_list[cnt])[0];
                                                 k.Status.AddReserve(hostadd.ToString());
                                             }
                                             catch { }
@@ -1079,7 +1079,7 @@ namespace Kagamin2
                                     {
                                         if (reserve_list[r_cnt] != "")
                                         {
-                                            System.Net.IPAddress hostadd = System.Net.Dns.GetHostAddresses(reserve_list[r_cnt])[0];
+                                            IPAddress hostadd = Dns.GetHostAddresses(reserve_list[r_cnt])[0];
                                         }
                                     }
                                 }
@@ -1144,7 +1144,7 @@ namespace Kagamin2
                                     {
                                         if (reserve_list[r_cnt] != "")
                                         {
-                                            System.Net.IPAddress hostadd = System.Net.Dns.GetHostAddresses(reserve_list[r_cnt])[0];
+                                            IPAddress hostadd = Dns.GetHostAddresses(reserve_list[r_cnt])[0];
                                             k.Status.AddReserve(hostadd.ToString());
                                         }
                                     }
