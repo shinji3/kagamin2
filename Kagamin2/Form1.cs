@@ -11,6 +11,7 @@ using System.IO;
 using System.Threading;
 using System.Xml.Serialization;
 using System.Diagnostics;
+using System.Net;
 
 namespace Kagamin2
 {
@@ -922,8 +923,8 @@ namespace Kagamin2
         private void RstWndPos_Click(object sender, EventArgs e)
         {
             ExitTaskTray();
-            int x = (int)(System.Windows.Forms.Screen.PrimaryScreen.Bounds.Width - this.Width) / 2; if (x < 0) x = 0;
-            int y = (int)(System.Windows.Forms.Screen.PrimaryScreen.Bounds.Height - this.Height) / 2; if (y < 0) y = 0;
+            int x = (int)(Screen.PrimaryScreen.Bounds.Width - this.Width) / 2; if (x < 0) x = 0;
+            int y = (int)(Screen.PrimaryScreen.Bounds.Height - this.Height) / 2; if (y < 0) y = 0;
             this.Location = new Point(x, y);
         }
         /// <summary>
@@ -1156,7 +1157,7 @@ namespace Kagamin2
             // 全体のCPU使用率
             try
             {
-                monAllView.Items[idx].SubItems[1].Text = System.Math.Round(Front.CPU_ALL.NextValue(), 1).ToString("0.0") + "%";
+                monAllView.Items[idx].SubItems[1].Text = Math.Round(Front.CPU_ALL.NextValue(), 1).ToString("0.0") + "%";
             }
             catch
             {
@@ -1166,7 +1167,7 @@ namespace Kagamin2
             // 鏡のCPU使用率
             try
             {
-                monAllView.Items[idx].SubItems[1].Text = System.Math.Round(Front.CPU_APP.NextValue(), 1).ToString("0.0") + "%";
+                monAllView.Items[idx].SubItems[1].Text = Math.Round(Front.CPU_APP.NextValue(), 1).ToString("0.0") + "%";
             }
             catch
             {
@@ -2389,7 +2390,7 @@ namespace Kagamin2
             try
             {
                 //リザーブ追加
-                System.Net.IPAddress hostadd = System.Net.Dns.GetHostAddresses(addResvHost.Text)[0];
+                IPAddress hostadd = Dns.GetHostAddresses(addResvHost.Text)[0];
                 _k.Status.AddReserve(hostadd.ToString());
                 //表示更新
                 addResvHost.Text = "";
@@ -2522,7 +2523,7 @@ namespace Kagamin2
                             if (r_cnt > 0)
                             {
                                 r_cnt--;
-                                _item.SubItems[0].ForeColor = System.Drawing.Color.LimeGreen;
+                                _item.SubItems[0].ForeColor = Color.LimeGreen;
                             }
                             else
                             {
@@ -2539,7 +2540,7 @@ namespace Kagamin2
                             if (r_cnt > 0)
                             {
                                 r_cnt--;
-                                _item.SubItems[0].ForeColor = System.Drawing.Color.LimeGreen;
+                                _item.SubItems[0].ForeColor = Color.LimeGreen;
                             }
                             else
                             {
@@ -2558,13 +2559,13 @@ namespace Kagamin2
                         if (c_cnt > 0)
                         {
                             _item.SubItems[1].Text = "○";  // clmResvViewStatus
-                            _item.SubItems[0].ForeColor = System.Drawing.Color.LimeGreen;
+                            _item.SubItems[0].ForeColor = Color.LimeGreen;
                             c_cnt--;
                         }
                         else
                         {
                             _item.SubItems[1].Text = "×";  // clmResvViewStatus
-                            _item.SubItems[0].ForeColor = System.Drawing.Color.Red;
+                            _item.SubItems[0].ForeColor = Color.Red;
                         }
                     }
                 }
@@ -2646,7 +2647,7 @@ namespace Kagamin2
             try
             {
                 //キック追加
-                System.Net.IPAddress hostadd = System.Net.Dns.GetHostAddresses(addKickHost.Text)[0];
+                IPAddress hostadd = Dns.GetHostAddresses(addKickHost.Text)[0];
                 _k.Status.AddKick(hostadd.ToString(),0);
                 //表示更新
                 addKickHost.Text = "";
@@ -2963,7 +2964,7 @@ namespace Kagamin2
 
                         // ポート毎接続制限中ならポート番号を赤文字にする
                         if (_k_tmp.Status.Pause)
-                            _k_tmp.Status.Gui.KagamiItem.SubItems[clmKgmViewPort.DisplayIndex].ForeColor = System.Drawing.Color.Red;
+                            _k_tmp.Status.Gui.KagamiItem.SubItems[clmKgmViewPort.DisplayIndex].ForeColor = Color.Red;
                         else
                             _k_tmp.Status.Gui.KagamiItem.SubItems[clmKgmViewPort.DisplayIndex].ResetStyle();
 
