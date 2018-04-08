@@ -6,6 +6,7 @@ using System.Threading;
 using System.Net;
 using System.IO;
 using System.Windows.Forms;
+using System.Media;
 
 namespace Kagamin2
 {
@@ -44,7 +45,7 @@ namespace Kagamin2
         /// <summary>
         /// IM接続/切断音再生用
         /// </summary>
-        private System.Media.SoundPlayer player = null;
+        private SoundPlayer player = null;
 
         /// <summary>
         /// Push配信でSetup要求受信済みフラグ
@@ -408,7 +409,7 @@ namespace Kagamin2
                 //Socketの作成
                 sock = new Socket(Socket.OSSupportsIPv6 ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 IPAddress hostadd = Dns.GetHostAddresses(Status.ImportHost)[0];
-                IPEndPoint ephost = new System.Net.IPEndPoint(hostadd, Status.ImportPort);
+                IPEndPoint ephost = new IPEndPoint(hostadd, Status.ImportPort);
 
                 sock.SendTimeout = (int)Front.Sock.SockConnTimeout;       // Import接続 ヘッダ取得要求送信のタイムアウト値
                 sock.ReceiveTimeout = (int)Front.Sock.SockConnTimeout;    // Import接続 ヘッダ取得応答受信のタイムアウト値
@@ -438,7 +439,7 @@ namespace Kagamin2
                         "Pragma: kagami-port=" + Status.MyPort + "\r\n" +
                         #endif
                         "Content-Type: application/x-mms-framed\r\n\r\n";
-                System.Text.Encoding enc = System.Text.Encoding.ASCII; // "euc-jp"
+                Encoding enc = Encoding.ASCII; // "euc-jp"
                 byte[] reqBytes = enc.GetBytes(reqMsg);
 
                 //リクエスト送信
@@ -479,9 +480,9 @@ namespace Kagamin2
                         try
                         {
                             Front.AddLogDetail("RecvRspMsg(Head)Sta-----\r\n" +
-                                         System.Text.Encoding.ASCII.GetString(ack_log, 0, count) +
+                                         Encoding.ASCII.GetString(ack_log, 0, count) +
                                          "\r\nRecvRspMsg(Head)End-----");
-                            http_status = int.Parse(System.Text.Encoding.ASCII.GetString(sts_code));
+                            http_status = int.Parse(Encoding.ASCII.GetString(sts_code));
                         }
                         catch
                         {
@@ -496,7 +497,7 @@ namespace Kagamin2
                         else if (http_status == 301 || http_status == 302)
                         {
                             // リダイレクト指示の場合は移動先をImportURLに再設定してからNG処理
-                            string _reply = System.Text.Encoding.ASCII.GetString(ack_log, 0, count);
+                            string _reply = Encoding.ASCII.GetString(ack_log, 0, count);
                             int _idx = _reply.IndexOf("Location: ");
                             if (_idx >= 0)
                             {
@@ -519,7 +520,7 @@ namespace Kagamin2
                     else if (count >= 50000)
                     {
                         Front.AddLogDetail("RecvRspMsg(Head)Sta-----\r\n" +
-                                     System.Text.Encoding.ASCII.GetString(ack_log,0,count) +
+                                     Encoding.ASCII.GetString(ack_log,0,count) +
                                      "\r\nRecvRspMsg(Head)End-----");
                         Status.ImportErrorContext = "HTTPヘッダ取得エラー(HTTPHeader>50KBover)";
                         throw new KagamiException("HTTPヘッダの取得中にエラーが発生しました(HTTPHeader>50KBover)");
@@ -996,7 +997,7 @@ namespace Kagamin2
                 //Socketの作成
                 sock = new Socket(Socket.OSSupportsIPv6 ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 IPAddress hostadd = Dns.GetHostAddresses(Status.ImportHost)[0];
-                IPEndPoint ephost = new System.Net.IPEndPoint(hostadd, Status.ImportPort);
+                IPEndPoint ephost = new IPEndPoint(hostadd, Status.ImportPort);
 
                 sock.SendTimeout = (int)Front.Sock.SockConnTimeout;       //インポート接続 Stream本体要求タイムアウト
                 sock.ReceiveTimeout = (int)Front.Sock.SockConnTimeout;    //インポート接続 Stream本体受信タイムアウト
@@ -1055,7 +1056,7 @@ namespace Kagamin2
                 // 気力があればその内マルチビットレートにも対応したいね。。
 
                 //ヘッダの送信
-                System.Text.Encoding enc = System.Text.Encoding.ASCII;
+                Encoding enc = Encoding.ASCII;
                 byte[] reqBytes = enc.GetBytes(reqMsg);
 
                 Front.AddLogDetail("SendReqMsg(Data)Sta-----\r\n" + reqMsg + "\r\nSendReqMsg(Data)End-----");
@@ -1096,9 +1097,9 @@ namespace Kagamin2
                         try
                         {
                             Front.AddLogDetail("RecvRspMsg(Data)Sta-----\r\n" +
-                                         System.Text.Encoding.ASCII.GetString(ack_log, 0, count) +
+                                         Encoding.ASCII.GetString(ack_log, 0, count) +
                                          "\r\nRecvRspMsg(Data)End-----");
-                            http_status = int.Parse(System.Text.Encoding.ASCII.GetString(sts_code));
+                            http_status = int.Parse(Encoding.ASCII.GetString(sts_code));
                         }
                         catch
                         {
@@ -1119,7 +1120,7 @@ namespace Kagamin2
                     else if (count >= 50000)
                     {
                         Front.AddLogDetail("RecvRspMsg(Data)Sta-----\r\n" +
-                                     System.Text.Encoding.ASCII.GetString(ack_log, 0, count) +
+                                     Encoding.ASCII.GetString(ack_log, 0, count) +
                                      "\r\nRecvRspMsg(Data)End-----");
                         Status.ImportErrorContext = "HTTPヘッダ取得エラー(HTTPHeader>50KBover)";
                         throw new KagamiException("HTTPヘッダの取得中にエラーが発生しました(HTTPHeader>50KBover)");
@@ -1646,7 +1647,7 @@ namespace Kagamin2
                 #region プロトコルチェック+UserAgent取得
                 string userAgent;
                 //int priKagamiPort;
-                System.Text.Encoding enc;
+                Encoding enc;
 
                 char[] end = { '\n', '\n' };
                 byte[] reqBytes = new byte[5000];
@@ -2440,7 +2441,7 @@ namespace Kagamin2
                 player.Stop();
                 player.Dispose();
             }
-            player = new System.Media.SoundPlayer(_wavfile);
+            player = new SoundPlayer(_wavfile);
             player.Play();
         }
     }
