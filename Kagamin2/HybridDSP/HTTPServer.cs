@@ -79,38 +79,14 @@ namespace HybridDSP.Net.HTTP
         }
 
         /// <summary>
-        /// Create an HTTPServer with default parameters (not use IPv6 support).
+        /// Create an HTTPServer with default parameters.
         /// </summary>
         /// <param name="factory">The RequestHandlerFactory that will instantiate the
         /// Request handler(s) for this server.</param>
         /// <param name="port">The port on which to listen for connections. The socket
         /// will be created and bound to all interfaces by the HTTPServer</param>
         public HTTPServer(IHTTPRequestHandlerFactory factory, int port)
-            : this(factory, port, HTTPServerParams.Default,false)
-        { }
-
-        /// <summary>
-        /// Create an HTTPServer with default parameters and select use IPv6 support.
-        /// </summary>
-        /// <param name="factory">The RequestHandlerFactory that will instantiate the
-        /// Request handler(s) for this server.</param>
-        /// <param name="port">The port on which to listen for connections. The socket
-        /// will be created and bound to all interfaces by the HTTPServer</param>
-        /// <param name="isv6">Use IPv6 or not.</param>
-        public HTTPServer(IHTTPRequestHandlerFactory factory, int port,bool isv6)
-            : this(factory, port, HTTPServerParams.Default, isv6)
-        { }
-
-        /// <summary>
-        /// Create an HTTPServer without IPv6 support.
-        /// </summary>
-        /// <param name="factory">The RequestHandlerFactory that will instantiate the
-        /// Request handler(s) for this server.</param>
-        /// <param name="port">The port on which to listen for connections. The socket
-        /// will be created and bound to all interfaces by the HTTPServer</param>
-        /// <param name="parameters">The parameters used for this server.</param>
-        public HTTPServer(IHTTPRequestHandlerFactory factory, int port, HTTPServerParams parameters)
-            : this(factory, port, parameters, false)
+            : this(factory, port, HTTPServerParams.Default)
         { }
 
         /// <summary>
@@ -121,15 +97,14 @@ namespace HybridDSP.Net.HTTP
         /// <param name="port">The port on which to listen for connections. The socket
         /// will be created and bound to all interfaces by the HTTPServer</param>
         /// <param name="parameters">The parameters used for this server.</param>
-        /// <param name="isv6">Use IPv6 or not.</param>
-        public HTTPServer(IHTTPRequestHandlerFactory factory, int port, HTTPServerParams parameters,bool isv6)
+        public HTTPServer(IHTTPRequestHandlerFactory factory, int port, HTTPServerParams parameters)
         {
             _factory = factory;
             _params = parameters;
 
             AddressFamily addressFamily;
             IPAddress bindAddress;
-            if (Socket.OSSupportsIPv6 && isv6)
+            if (Socket.OSSupportsIPv6)
             {
                 addressFamily = AddressFamily.InterNetworkV6;
                 bindAddress = IPAddress.IPv6Any;
