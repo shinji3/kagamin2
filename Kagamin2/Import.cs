@@ -122,7 +122,7 @@ namespace Kagamin2
 
                             // Push配信利用要求が来たので、ポートを開けて待つ。
                             Front.AddLogData(0, Status, "Push配信受付ポートを起動します");
-                            IPEndPoint _iep = new IPEndPoint(IPAddress.Any, Status.MyPort);
+                            IPEndPoint _iep = new IPEndPoint(Socket.OSSupportsIPv6 ? IPAddress.IPv6Any : IPAddress.Any, Status.MyPort);
                             TcpListener _listener = new TcpListener(_iep);
                             // Listen開始
                             try
@@ -406,8 +406,7 @@ namespace Kagamin2
             try
             {
                 //Socketの作成
-                sock = new Socket(AddressFamily.InterNetwork,
-                    SocketType.Stream, ProtocolType.Tcp);
+                sock = new Socket(Socket.OSSupportsIPv6 ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 IPAddress hostadd = Dns.GetHostAddresses(Status.ImportHost)[0];
                 IPEndPoint ephost = new System.Net.IPEndPoint(hostadd, Status.ImportPort);
 
@@ -995,8 +994,7 @@ namespace Kagamin2
             try
             {
                 //Socketの作成
-                sock = new Socket(AddressFamily.InterNetwork,
-                    SocketType.Stream, ProtocolType.Tcp);
+                sock = new Socket(Socket.OSSupportsIPv6 ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 IPAddress hostadd = Dns.GetHostAddresses(Status.ImportHost)[0];
                 IPEndPoint ephost = new System.Net.IPEndPoint(hostadd, Status.ImportPort);
 

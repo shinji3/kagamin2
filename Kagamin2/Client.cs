@@ -520,7 +520,7 @@ namespace Kagamin2
         /// </summary>
         private void KagaminCheck()
         {
-            Socket sock_chk = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            Socket sock_chk = new Socket(Socket.OSSupportsIPv6 ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
             // 10秒待ってからチェック開始
             Thread.Sleep(10000);

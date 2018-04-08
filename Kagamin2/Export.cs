@@ -53,7 +53,7 @@ namespace Kagamin2
                 // Export待ち受け開始
                 Front.AddLogData(0, Status, "エクスポートタスクを開始します");
 
-                IPEndPoint _iep = new IPEndPoint(IPAddress.Any, Status.MyPort);
+                IPEndPoint _iep = new IPEndPoint(Socket.OSSupportsIPv6 ? IPAddress.IPv6Any : IPAddress.Any, Status.MyPort);
                 System.Net.Sockets.TcpListener _listener = new System.Net.Sockets.TcpListener(_iep);
                 // Listen開始
                 try
