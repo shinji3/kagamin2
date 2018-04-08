@@ -135,7 +135,6 @@ namespace HybridDSP.Net.HTTP
                 bindAddress = IPAddress.IPv6Any;
             }
             else
-
             {
                 addressFamily = AddressFamily.InterNetwork;
                 bindAddress = IPAddress.Any;
