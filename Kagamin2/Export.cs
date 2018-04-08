@@ -54,7 +54,7 @@ namespace Kagamin2
                 Front.AddLogData(0, Status, "エクスポートタスクを開始します");
 
                 IPEndPoint _iep = new IPEndPoint(Socket.OSSupportsIPv6 ? IPAddress.IPv6Any : IPAddress.Any, Status.MyPort);
-                System.Net.Sockets.TcpListener _listener = new System.Net.Sockets.TcpListener(_iep);
+                TcpListener _listener = new TcpListener(_iep);
                 // Listen開始
                 try
                 {
@@ -78,7 +78,7 @@ namespace Kagamin2
                         if (_listener.Pending() == true)
                         {
                             //Accept実施
-                            System.Net.Sockets.Socket _sock = _listener.AcceptSocket();
+                            Socket _sock = _listener.AcceptSocket();
                             Thread _th = new Thread(ClientTask);
                             _th.Start(_sock);
                         }
@@ -95,7 +95,7 @@ namespace Kagamin2
                         //リスナーで待機しているクライアントをすべて切断する
                         while (_listener.Pending())
                         {
-                            System.Net.Sockets.TcpClient _sock = _listener.AcceptTcpClient();
+                            TcpClient _sock = _listener.AcceptTcpClient();
                             _sock.Close();
                         }
                     }
@@ -114,7 +114,7 @@ namespace Kagamin2
         /// <param name="obj"></param>
         private void ClientTask(object obj)
         {
-            Socket sock = (System.Net.Sockets.Socket)obj;
+            Socket sock = (Socket)obj;
             string _ua = "";
 
             sock.ReceiveTimeout = 1000;     //Export受信のタイムアウト値
@@ -159,7 +159,7 @@ namespace Kagamin2
                     {
                         for (; j < 5000; j++)
                         {
-                            sock.Receive(reqBytes, j, 1, System.Net.Sockets.SocketFlags.None);
+                            sock.Receive(reqBytes, j, 1, SocketFlags.None);
                             if (reqBytes[j] == '\r') continue;
                             if (reqBytes[j] == end[i]) i++; else i = 0;
                             if (i >= 2) break;
@@ -223,7 +223,7 @@ namespace Kagamin2
         /// </summary>
         /// <param name="sock">クライアントのsocket</param>
         /// <returns>クライアントのUserAgent</returns>
-        private string AcceptUser(System.Net.Sockets.Socket sock)
+        private string AcceptUser(Socket sock)
         {
             string _ip = ((IPEndPoint)sock.RemoteEndPoint).Address.ToString();
             int _port = ((IPEndPoint)sock.RemoteEndPoint).Port;
@@ -233,7 +233,7 @@ namespace Kagamin2
                 #region プロトコルチェック+UserAgent取得
                 string userAgent;
                 int priKagamiPort;
-                System.Text.Encoding enc;
+                Encoding enc;
 
                 char[] end = { '\n', '\n' };
                 byte[] reqBytes = new byte[5000];
@@ -247,7 +247,7 @@ namespace Kagamin2
                 {
                     for (; j < 5000; j++)
                     {
-                        sock.Receive(reqBytes, j, 1, System.Net.Sockets.SocketFlags.None);
+                        sock.Receive(reqBytes, j, 1, SocketFlags.None);
                         if (reqBytes[j] == '\r') continue;
                         if (reqBytes[j] == end[i]) i++; else i = 0;
                         if (i >= 2) break;
