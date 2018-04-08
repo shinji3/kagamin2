@@ -83,7 +83,7 @@
             this.optSendQueueSize = new System.Windows.Forms.NumericUpDown();
             this.optPortFullOnly = new System.Windows.Forms.CheckBox();
             this.tabControl1 = new System.Windows.Forms.TabControl();
-            this.tabPageOpt1 = new Kagamin2.BufferdTabPage();
+            this.tabPageOpt1 = new System.Windows.Forms.TabPage();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
             this.optMinBar = new System.Windows.Forms.RadioButton();
             this.optMinTray = new System.Windows.Forms.RadioButton();
@@ -96,7 +96,7 @@
             this.groupBox24 = new System.Windows.Forms.GroupBox();
             this.optRefKagamiBTN = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.tabPageOpt2 = new Kagamin2.BufferdTabPage();
+            this.tabPageOpt2 = new System.Windows.Forms.TabPage();
             this.optUseHP = new System.Windows.Forms.CheckBox();
             this.groupKgm2 = new System.Windows.Forms.GroupBox();
             this.optSameImportIPNum = new System.Windows.Forms.NumericUpDown();
@@ -116,7 +116,7 @@
             this.label4 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
-            this.tabPageOpt3 = new Kagamin2.BufferdTabPage();
+            this.tabPageOpt3 = new System.Windows.Forms.TabPage();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.optRefSndConnNgBTN = new System.Windows.Forms.Button();
             this.optRefSndDiscBTN = new System.Windows.Forms.Button();
@@ -138,7 +138,7 @@
             this.label26 = new System.Windows.Forms.Label();
             this.label23 = new System.Windows.Forms.Label();
             this.label20 = new System.Windows.Forms.Label();
-            this.tabPageOpt4 = new Kagamin2.BufferdTabPage();
+            this.tabPageOpt4 = new System.Windows.Forms.TabPage();
             this.scheduleDataView = new System.Windows.Forms.DataGridView();
             this.clmScheduleEnable = new System.Windows.Forms.DataGridViewCheckBoxColumn();
             this.clmScheduleEvent = new System.Windows.Forms.DataGridViewComboBoxColumn();
@@ -1703,7 +1703,7 @@
 
         private System.Windows.Forms.Button okBTN;
         private System.Windows.Forms.TabControl tabControl1;
-        private BufferdTabPage tabPageOpt1;
+        private System.Windows.Forms.TabPage tabPageOpt1;
         private System.Windows.Forms.GroupBox groupBox18;
         private System.Windows.Forms.ComboBox optBandType;
         private System.Windows.Forms.NumericUpDown optBandValue;
@@ -1735,7 +1735,7 @@
         private System.Windows.Forms.Label label39;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.TextBox optPortList;
-        private BufferdTabPage tabPageOpt2;
+        private System.Windows.Forms.TabPage tabPageOpt2;
         private System.Windows.Forms.GroupBox groupKgm2;
         private System.Windows.Forms.NumericUpDown optSameImportIPNum;
         private System.Windows.Forms.Label label27;
@@ -1763,7 +1763,7 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.TextBox optHPAddr;
         private System.Windows.Forms.TextBox optHPPort;
-        private BufferdTabPage tabPageOpt3;
+        private System.Windows.Forms.TabPage tabPageOpt3;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.Button optRefSndConnNgBTN;
         private System.Windows.Forms.Button optRefSndDiscBTN;
@@ -1798,7 +1798,7 @@
         private System.Windows.Forms.NumericUpDown optSendQueueSize;
         private System.Windows.Forms.Label label23;
         private System.Windows.Forms.Label label20;
-        private BufferdTabPage tabPageOpt4;
+        private System.Windows.Forms.TabPage tabPageOpt4;
         private System.Windows.Forms.DataGridView scheduleDataView;
         private System.Windows.Forms.Button cancelBTN;
         private System.Windows.Forms.Button applyBTN;
@@ -1819,22 +1819,5 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn clmScheduleData;
         private System.Windows.Forms.DataGridViewTextBoxColumn clmScheduleDummy;
         private System.Windows.Forms.CheckBox optPortFullOnly;
-    }
-    partial class BufferdTabPage : System.Windows.Forms.TabPage
-    {
-        // TabPageの切り替え高速化
-        // 設定のタブページにWS_EX_COMPOSITED(0x2000000)を設定する
-        // …が、WinXPだとnumericUpDownの表示がおかしくなるのでやめておく。。
-        /*
-        protected override System.Windows.Forms.CreateParams CreateParams
-        {
-            get
-            {
-                System.Windows.Forms.CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x2000000;
-                return cp;
-            }
-        }
-        */
     }
 }
