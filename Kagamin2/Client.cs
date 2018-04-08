@@ -7,7 +7,8 @@ using System.Text;
 using System.Threading;
 using System.Net;
 using System.Net.Sockets;
-
+using System.Drawing;
+using System.Windows.Forms;
 
 namespace Kagamin2
 {
@@ -198,7 +199,7 @@ namespace Kagamin2
             lock (Front.KickList)
             lock (Status.Gui.KickItem)
             {
-                foreach (System.Windows.Forms.ListViewItem _item in Status.Gui.KickItem)
+                foreach (ListViewItem _item in Status.Gui.KickItem)
                 {
                     // Kick状態＆解除時間を更新
                     string[] str = Front.KickList[_item.Text].Split(',');
@@ -209,17 +210,17 @@ namespace Kagamin2
                     {
                         TimeSpan _duration = _end_tim - _now_tim;
                         _item.SubItems[1].Text = "規制中/解除まで" + (long)_duration.TotalSeconds + "秒";    // clmKickViewState
-                        _item.SubItems[0].ForeColor = System.Drawing.Color.Red;
+                        _item.SubItems[0].ForeColor = Color.Red;
                     }
                     else if (con_cnt < 0)
                     {
                         _item.SubItems[1].Text = "規制中/無期限";   // clmKickViewState
-                        _item.SubItems[0].ForeColor = System.Drawing.Color.Red;
+                        _item.SubItems[0].ForeColor = Color.Red;
                     }
                     else
                     {
                         _item.SubItems[1].Text = "解除中";                                                  // clmKickViewState
-                        _item.SubItems[0].ForeColor = System.Drawing.Color.Empty;
+                        _item.SubItems[0].ForeColor = Color.Empty;
                     }
                 }
             }
@@ -349,9 +350,9 @@ namespace Kagamin2
         /// </summary>
         public void Send()
         {
-            System.Collections.ArrayList _red = new System.Collections.ArrayList();
-            System.Collections.ArrayList _wrt = new System.Collections.ArrayList();
-            System.Collections.ArrayList _err = new System.Collections.ArrayList();
+            ArrayList _red = new ArrayList();
+            ArrayList _wrt = new ArrayList();
+            ArrayList _err = new ArrayList();
 
             #region 子鏡接続チェックのスレッド生成
             // 鏡ポートがわかるなら一律チェックスレッド生成
@@ -556,16 +557,16 @@ namespace Kagamin2
                     "Pragma: no-cache\r\n" +
                     "Content-Type: application/x-mms-framed\r\n\r\n";
 
-                System.Text.Encoding enc = System.Text.Encoding.ASCII; // "euc-jp"
+                Encoding enc = Encoding.ASCII; // "euc-jp"
                 byte[] reqBytes = enc.GetBytes(reqMsg);
-                sock_chk.Send(reqBytes, reqBytes.Length, System.Net.Sockets.SocketFlags.None);
+                sock_chk.Send(reqBytes, reqBytes.Length, SocketFlags.None);
 
                 // 応答ヘッダ受信
                 byte[] tmp = new byte[9];
                 byte[] tmp2 = new byte[3];
                 sock_chk.Receive(tmp);  // "HTTP/1.x " まで受信
                 sock_chk.Receive(tmp2); // HTTP StatusCodeの3byte受信
-                int http_status = int.Parse(System.Text.Encoding.ASCII.GetString(tmp2));
+                int http_status = int.Parse(Encoding.ASCII.GetString(tmp2));
                 // StatusCode:200以外はNG
                 // 10秒後にチェックして美人は普通ありえないでしょう。。
                 if (http_status != 200)
