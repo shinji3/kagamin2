@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Net;
+using System.Net.Sockets;
+using System.Drawing;
 
 namespace Kagamin2
 {
@@ -419,7 +421,7 @@ namespace Kagamin2
             string _hostip = "";
             ListViewItem _item = new ListViewItem();
 
-            try { _hostname = System.Net.Dns.GetHostEntry(_cd.Ip).HostName; }
+            try { _hostname = Dns.GetHostEntry(_cd.Ip).HostName; }
             catch { _hostname = _cd.Ip; }
 
             if (Front.Opt.EnableResolveHost)
@@ -477,7 +479,7 @@ namespace Kagamin2
             {
                 ListViewItem _item = new ListViewItem(_ip);
                 _item.SubItems.Add("Å~");
-                _item.SubItems[0].ForeColor = System.Drawing.Color.Red;
+                _item.SubItems[0].ForeColor = Color.Red;
                 // GUIÇ…í«â¡
                 Event.EventUpdateReserve(Kagami, _item, 0);
                 // ì‡ïîä«óùReserveItemÇ…í«â¡
@@ -588,7 +590,7 @@ namespace Kagamin2
         /// </summary>
         /// <param name="sock"></param>
         /// <returns></returns>
-        public bool IsKickCheck(System.Net.Sockets.Socket sock)
+        public bool IsKickCheck(Socket sock)
         {
             string _ip = ((IPEndPoint)sock.RemoteEndPoint).Address.ToString();
 
