@@ -365,11 +365,6 @@ namespace Kagamin2
             /// グローバルIPを取得するための確認君URL
             /// </summary>
             public string IPCheckURL;
-            /// <summary>
-            /// 確認君のHTMLソース内で、
-            /// グローバルIPが書いてある行番号
-            /// </summary>
-            public uint IPCheckLine;
         }
         static public HP Hp;
 
@@ -973,8 +968,7 @@ namespace Kagamin2
             IniFileHandler.GetPrivateProfileString(                         "HP",       "HOSTNAME",             "http://localhost", sb, (uint)sb.Capacity, iniFile);    Hp.IpHTTP = sb.ToString();
             Hp.PortHTTP             = IniFileHandler.GetPrivateProfileInt(  "HP",       "PORT",                 8888,   iniFile);
             IniFileHandler.GetPrivateProfileString(                         "HP",       "PUBLIC_DIR",           "",     sb, (uint)sb.Capacity, iniFile);    Hp.PublicDir = sb.ToString();
-            IniFileHandler.GetPrivateProfileString(                         "HP",       "IP_CHECK_URL",         "http://taruo.net/ip/",                sb, (uint)sb.Capacity, iniFile);    Hp.IPCheckURL = sb.ToString();
-            Hp.IPCheckLine          = IniFileHandler.GetPrivateProfileInt(  "HP",       "IP_CHECK_LINE",        4,      iniFile);
+            IniFileHandler.GetPrivateProfileString(                         "HP",       "IP_CHECK_URL",         "https://api.ipify.org",                sb, (uint)sb.Capacity, iniFile);    Hp.IPCheckURL = sb.ToString();
 
             Kick.KickCheckSecond    = IniFileHandler.GetPrivateProfileInt(  "KICK",     "CHECK_SECOND",         10,     iniFile);
             Kick.KickCheckTime      = IniFileHandler.GetPrivateProfileInt(  "KICK",     "CHECK_TIME",           7,      iniFile);
@@ -1128,7 +1122,6 @@ namespace Kagamin2
             IniFileHandler.WritePrivateProfileString("HP", "PORT",                  Hp.PortHTTP.ToString(),     iniFile);
             IniFileHandler.WritePrivateProfileString("HP", "PUBLIC_DIR",            Hp.PublicDir,               iniFile);
             IniFileHandler.WritePrivateProfileString("HP", "IP_CHECK_URL",          Hp.IPCheckURL,              iniFile);
-            IniFileHandler.WritePrivateProfileString("HP", "IP_CHECK_LINE",         Hp.IPCheckLine.ToString(),  iniFile);
 
             IniFileHandler.WritePrivateProfileString("KICK", "CHECK_SECOND",        Kick.KickCheckSecond.ToString(),    iniFile);
             IniFileHandler.WritePrivateProfileString("KICK", "CHECK_TIME",          Kick.KickCheckTime.ToString(),      iniFile);
@@ -1391,7 +1384,7 @@ namespace Kagamin2
         /// </summary>
         static public bool GetGlobalIP()
         {
-            if (Front.Hp.IPCheckURL == "" || Front.Hp.IPCheckLine <= 0)
+            if (Front.Hp.IPCheckURL == "")
             {
                 MessageBox.Show("グローバルIP取得ページの設定が正しくありません", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
@@ -1423,13 +1416,11 @@ namespace Kagamin2
             wc.Dispose();
             try
             {
-                //指定された行を取り出す
-                string line = str.Split('\n')[Front.Hp.IPCheckLine - 1];
                 //IPアドレスらしきものを検索
-                Match index = Regex.Match(line, @"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}");
+                Match index = Regex.Match(str, @"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}");
                 if (index.Success)
                 {
-                    GlobalIP = line.Substring(index.Index, index.Length);
+                    GlobalIP = str.Substring(index.Index, index.Length);
                     GlobalIPGetTime = DateTime.Now.AddSeconds(60);   // 次回取得可能なのは１分後
                     return true;
                 }
@@ -1437,8 +1428,7 @@ namespace Kagamin2
                 {
                     MessageBox.Show("IPアドレスが取得できませんでした\r\n" +
                                     "URL:" + Front.Hp.IPCheckURL + "\r\n" +
-                                    "LINE:" + Front.Hp.IPCheckLine + "\r\n" +
-                                    "STRING:" + line + "\r\n",
+                                    "STRING:" + str + "\r\n",
                                     "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
                 }
