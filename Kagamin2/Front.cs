@@ -973,11 +973,7 @@ namespace Kagamin2
             IniFileHandler.GetPrivateProfileString(                         "HP",       "HOSTNAME",             "http://localhost", sb, (uint)sb.Capacity, iniFile);    Hp.IpHTTP = sb.ToString();
             Hp.PortHTTP             = IniFileHandler.GetPrivateProfileInt(  "HP",       "PORT",                 8888,   iniFile);
             IniFileHandler.GetPrivateProfileString(                         "HP",       "PUBLIC_DIR",           "",     sb, (uint)sb.Capacity, iniFile);    Hp.PublicDir = sb.ToString();
-#if DEBUG
-            IniFileHandler.GetPrivateProfileString(                         "HP",       "IP_CHECK_URL",         "http://kagami.homelinux.net/ip.cgi",  sb, (uint)sb.Capacity, iniFile);    Hp.IPCheckURL = sb.ToString();
-#else
             IniFileHandler.GetPrivateProfileString(                         "HP",       "IP_CHECK_URL",         "http://taruo.net/ip/",                sb, (uint)sb.Capacity, iniFile);    Hp.IPCheckURL = sb.ToString();
-#endif
             Hp.IPCheckLine          = IniFileHandler.GetPrivateProfileInt(  "HP",       "IP_CHECK_LINE",        4,      iniFile);
 
             Kick.KickCheckSecond    = IniFileHandler.GetPrivateProfileInt(  "KICK",     "CHECK_SECOND",         10,     iniFile);
