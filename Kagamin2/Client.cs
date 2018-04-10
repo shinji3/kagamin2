@@ -224,7 +224,7 @@ namespace Kagamin2
                     if (cd.KagamiOK)
                     {
                         // "http://hostñº:portî‘çÜ" Ç≈ãlÇﬂÇÈ
-                        string kagami = "http://" + cd.Ip + ":" + cd.KagamiPort.ToString();
+                        string kagami = "http://" + (cd.Ip.Contains(":") ? "[" + cd.Ip +  "]" : cd.Ip) + ":" + cd.KagamiPort.ToString();
                         list.Add(kagami);
                     }
                 }

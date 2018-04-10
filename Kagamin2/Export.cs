@@ -613,7 +613,7 @@ namespace Kagamin2
                                         }
                                         else
                                         {
-                                            string _redirUrl = "http://" + Status.ImportHostURL + ":" + Status.ImportPort;
+                                            string _redirUrl = "http://" + (Status.ImportHost.Contains(":") ? "[" + Status.ImportHost +  "]" : Status.ImportHost) + ":" + Status.ImportPort;
                                             string _redirStr = "HTTP/1.0 302 Found\r\n" +
                                                 "Location: " + _redirUrl + "\r\n" +
                                                 "Connection: close\r\n" +
