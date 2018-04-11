@@ -988,7 +988,7 @@ namespace Kagamin2
             Opt.PriKagamiexe        = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_KAGAMIEXE",     0,      iniFile) != 0 ? true : false;
             Opt.PriKagamin          = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_KAGAMIN",       0,      iniFile) != 0 ? true : false;
             Opt.BalloonTip          = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_BALLOONTIP",    0,      iniFile) != 0 ? true : false;
-            Opt.EnablePush          = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_PUSH",          0,      iniFile) != 0 ? true : false;
+            Opt.EnablePush          = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_PUSH",          1,      iniFile) != 0 ? true : false;
             Opt.EnableInfo          = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_INFO",          0,      iniFile) != 0 ? true : false;
             Opt.EnableAdmin         = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_ADMIN",         0,      iniFile) != 0 ? true : false;
             IniFileHandler.GetPrivateProfileString(                         "OPT",      "ADMIN_PASS",           "",     sb, (uint)sb.Capacity, iniFile);    Opt.AdminPass = sb.ToString();
