@@ -102,21 +102,8 @@ namespace HybridDSP.Net.HTTP
             _factory = factory;
             _params = parameters;
 
-            AddressFamily addressFamily;
-            IPAddress bindAddress;
-            if (Socket.OSSupportsIPv6)
-            {
-                addressFamily = AddressFamily.InterNetworkV6;
-                bindAddress = IPAddress.IPv6Any;
-            }
-            else
-            {
-                addressFamily = AddressFamily.InterNetwork;
-                bindAddress = IPAddress.Any;
-            }
-
-            _socket = new Socket(addressFamily, SocketType.Stream, ProtocolType.Tcp);
-            _socket.Bind(new IPEndPoint(bindAddress, port));
+            _socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            _socket.Bind(new IPEndPoint(IPAddress.Loopback, port));
             _socket.Listen(64);
         }
 
