@@ -103,7 +103,7 @@ namespace HybridDSP.Net.HTTP
             _params = parameters;
 
             _socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            _socket.Bind(new IPEndPoint(IPAddress.Loopback, port));
+            _socket.Bind(new IPEndPoint(IPAddress.IPv6Any, port));
             _socket.Listen(64);
         }
 
