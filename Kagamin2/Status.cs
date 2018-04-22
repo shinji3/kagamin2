@@ -33,7 +33,8 @@ namespace Kagamin2
         {
             get
             {
-                return new Uri(ImportURL).DnsSafeHost;
+                string ImportHost = new Uri(ImportURL).DnsSafeHost;
+                return Dns.GetHostAddresses(ImportHost)[0].ToString();
             }
         }
 
