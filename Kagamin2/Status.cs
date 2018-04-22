@@ -34,7 +34,7 @@ namespace Kagamin2
             get
             {
                 string ImportHost = new Uri(ImportURL).DnsSafeHost;
-                return Dns.GetHostAddresses(ImportHost)[0].ToString();
+                return Dns.GetHostAddresses(ImportHost)[0].MapToIPv6().ToString();
             }
         }
 
