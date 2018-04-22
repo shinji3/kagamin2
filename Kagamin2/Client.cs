@@ -346,11 +346,11 @@ namespace Kagamin2
             {
 #if !DEBUG
                 // ローカルアドレスの子鏡は除外する
-                if (Ip == "::1" ||                // IPv6 LoopBack
-                    Ip.StartsWith("10.") ||       // ClassA
-                    Ip.StartsWith("172.16.") ||   // ClassB
-                    Ip.StartsWith("192.168.") ||  // ClassC
-                    Ip.StartsWith("127."))        // LoopBack
+                if (Ip == "::1" ||                       // IPv6 LoopBack
+                    Ip.StartsWith("::ffff:10.") ||       // ClassA
+                    Ip.StartsWith("::ffff:172.16.") ||   // ClassB
+                    Ip.StartsWith("::ffff:192.168.") ||  // ClassC
+                    Ip.StartsWith("::ffff:127."))        // LoopBack
                 {
                     // 除外
                 }

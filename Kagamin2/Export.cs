@@ -602,11 +602,11 @@ namespace Kagamin2
                                     //親へのリダイレクトを行うとき
                                     if (busy_flg && Status.EnableRedirectParent && Status.Type != 2)
                                     {
-                                        if (Status.ImportHost == "::1" ||               // IPv6 LoopBack
-                                            Status.ImportHost.StartsWith("10.") ||      // ClassA
-                                            Status.ImportHost.StartsWith("172.16.") ||  // ClassB
-                                            Status.ImportHost.StartsWith("192.168.") || // ClassC
-                                            Status.ImportHost.StartsWith("127."))       // LoopBack
+                                        if (Status.ImportHost == "::1" ||                      // IPv6 LoopBack
+                                            Status.ImportHost.StartsWith("::ffff:10.") ||      // ClassA
+                                            Status.ImportHost.StartsWith("::ffff:172.16.") ||  // ClassB
+                                            Status.ImportHost.StartsWith("::ffff:192.168.") || // ClassC
+                                            Status.ImportHost.StartsWith("::ffff:127."))       // LoopBack
                                         {
                                             // 親がローカルアドレスなら転送Skip
                                         }
