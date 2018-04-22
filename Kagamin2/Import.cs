@@ -407,7 +407,7 @@ namespace Kagamin2
             {
                 //Socketの作成
                 sock = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                IPAddress hostadd = Dns.GetHostAddresses(Status.ImportHost)[0];
+                IPAddress hostadd = IPAddress.Parse(Status.ImportHost);
                 IPEndPoint ephost = new IPEndPoint(hostadd, Status.ImportPort);
 
                 sock.SendTimeout = (int)Front.Sock.SockConnTimeout;       // Import接続 ヘッダ取得要求送信のタイムアウト値
@@ -995,7 +995,7 @@ namespace Kagamin2
             {
                 //Socketの作成
                 sock = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                IPAddress hostadd = Dns.GetHostAddresses(Status.ImportHost)[0];
+                IPAddress hostadd = IPAddress.Parse(Status.ImportHost);
                 IPEndPoint ephost = new IPEndPoint(hostadd, Status.ImportPort);
 
                 sock.SendTimeout = (int)Front.Sock.SockConnTimeout;       //インポート接続 Stream本体要求タイムアウト
