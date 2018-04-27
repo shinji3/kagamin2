@@ -183,17 +183,24 @@ namespace Kagamin2
         public bool Pause = false;
 
         /// <summary>
-        /// ヘッダ取得応答/HTTP1.0
+        /// HTTP取得応答
         /// </summary>
-        public byte[] HeadRspMsg10 = null;
+        public byte[] HttpRspMsg = Encoding.ASCII.GetBytes(
+                    "HTTP/1.0 200 OK\r\n" +
+                    "Server: Rex/8.0.0.2980\r\n" +
+                    "Cache-Control: no-cache\r\n" +
+                    "Pragma: no-cache\r\n" +
+                    "Pragma: client-id=0\r\n" +
+                    "Pragma: features=\"broadcast,playlist\"\r\n" +
+                    "X-Server: " + Front.AppName + "\r\n" +
+                    "Keep-Alive: timeout=1, max=0\r\n" +
+                    "Connection: close\r\n" +
+                    "Content-Type: application/x-mms-framed\r\n\r\n"
+            );
         /// <summary>
         /// ヘッダストリーム情報
         /// </summary>
         public byte[] HeadStream = null;
-        /// <summary>
-        /// データ取得応答/HTTP1.0
-        /// </summary>
-        public byte[] DataRspMsg10 = null;
         /// <summary>
         /// StreamSwitchCount
         /// </summary>

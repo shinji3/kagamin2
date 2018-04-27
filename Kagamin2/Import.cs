@@ -271,8 +271,6 @@ namespace Kagamin2
                         Status.Disc();
                     }
                     // 外部接続待ちうけに戻る時は追加で以下も削除
-                    Status.DataRspMsg10 = null;
-                    Status.HeadRspMsg10 = null;
                     Status.HeadStream = null;
                     //念のため
                     try
@@ -527,8 +525,7 @@ namespace Kagamin2
                 }
 
                 //ヘッダ上と下を繋げるメモリストリーム
-                MemoryStream ms2;
-                ms2 = new MemoryStream();
+                MemoryStream ms = new MemoryStream();
 
                 // ASFヘッダメモ: type(2)+size(2)+seq(4)+unk(2)+szcfm(2)
 
@@ -540,14 +537,14 @@ namespace Kagamin2
                 while (Status.RunStatus)
                 {
                     sock.Receive(ack);
-                    ms2.WriteByte(ack[0]);
+                    ms.WriteByte(ack[0]);
                     pos++;
                     if (ack[0].Equals(ack_sta[i])) i++; else i = 0;
                     if (i >= ack_sta.Length)
                     {
                         break;
                     }
-                    else if (ms2.Length > 50000)
+                    else if (ms.Length > 50000)
                     {
                         Status.ImportErrorContext = "ストリームヘッダ取得エラー(StreamHeader>50KBover)";
                         throw new KagamiException("ストリームヘッダの取得中にエラーが発生しました(StreamHeader>50KBover)");
@@ -559,10 +556,10 @@ namespace Kagamin2
                 // blk_size取得
                 int blk_size = 0;
                 sock.Receive(ack);
-                ms2.WriteByte(ack[0]);
+                ms.WriteByte(ack[0]);
                 blk_size += ack[0];
                 sock.Receive(ack);
-                ms2.WriteByte(ack[0]);
+                ms.WriteByte(ack[0]);
                 blk_size += (ack[0] << 8);
                 // 残りのヘッダ取得
                 int rsp_size = 0;
@@ -574,8 +571,8 @@ namespace Kagamin2
                 if (Status.RunStatus == false)
                     throw new KagamiException("ヘッダー取得中に終了要求が発生しました");
 
-                ms2.Write(ack, 0, blk_size);
-                Status.HeadStream = ms2.ToArray();
+                ms.Write(ack, 0, blk_size);
+                Status.HeadStream = ms.ToArray();
 
                 bool error_flg = false;
                 // size-cfmのチェック。異常でも突き進む？
@@ -644,25 +641,6 @@ namespace Kagamin2
                 }
                 catch { }
                 sock.Close();
-
-                // エクスポートの応答データ作成
-                string str =
-                    "HTTP/1.0 200 OK\r\n" +
-                    "Server: Rex/8.0.0.2980\r\n" +
-                    "Cache-Control: no-cache\r\n" +
-                    "Pragma: no-cache\r\n" +
-                    "Pragma: client-id=0\r\n" +
-                    "Pragma: features=\"broadcast,playlist\"\r\n" +
-                    "X-Server: " + Front.AppName + "\r\n" +
-                    "Keep-Alive: timeout=1, max=0\r\n" +
-                    "Connection: close\r\n" +
-                    "Content-Type: application/x-mms-framed\r\n\r\n";
-                //ヘッダ上と下を繋げるメモリストリーム
-                MemoryStream ms1;
-                ms1 = new MemoryStream();
-                count = enc.GetBytes(str).Length;
-                ms1.Write(enc.GetBytes(str), 0, count);
-                Status.HeadRspMsg10 = ms1.ToArray();
             }
             catch (KagamiException ke)
             {
@@ -1126,24 +1104,6 @@ namespace Kagamin2
                         throw new KagamiException("HTTPヘッダの取得中にエラーが発生しました(HTTPHeader>50KBover)");
                     }
                 }
-                // エクスポートの応答データ作成
-                string str =
-                    "HTTP/1.0 200 OK\r\n" +
-                    "Server: Rex/8.0.0.2980\r\n" +
-                    "Cache-Control: no-cache\r\n" +
-                    "Pragma: no-cache\r\n" +
-                    "Pragma: client-id=0\r\n" +
-                    "Pragma: features=\"broadcast,playlist\"\r\n" +
-                    "X-Server: " + Front.AppName + "\r\n" +
-                    "Keep-Alive: timeout=1, max=0\r\n" +
-                    "Connection: close\r\n" +
-                    "Content-Type: application/x-mms-framed\r\n\r\n";
-                //データ取得応答ヘッダを保持
-                MemoryStream ms;
-                ms = new MemoryStream();
-                count = enc.GetBytes(str).Length;
-                ms.Write(enc.GetBytes(str), 0, count);
-                Status.DataRspMsg10 = ms.ToArray();
             }
             catch (KagamiException ke)
             {
@@ -1217,9 +1177,9 @@ namespace Kagamin2
                             if (recv[0] != 0x24)
                             {
                                 #region type1異常
-                                // typeが異常。とりあえずms2に退避
+                                // typeが異常。とりあえずmsに退避
                                 ms.WriteByte(recv[0]);
-                                // ms2が1000byteを超えていたらユーザに送信
+                                // msが1000byteを超えていたらユーザに送信
                                 if (ms.Length > 1000)
                                 {
                                     // 送信
@@ -1257,10 +1217,10 @@ namespace Kagamin2
                                     break;
                                 default:
                                     #region type2異常
-                                    // type異常。同じくms2に退避
+                                    // type異常。同じくmsに退避
                                     ms.WriteByte(0x24);
                                     ms.WriteByte(recv[0]);
-                                    // ms2が1000byteを超えていたらユーザに送信
+                                    // msが1000byteを超えていたらユーザに送信
                                     if (ms.Length > 1000)
                                     {
                                         // 送信
@@ -1926,26 +1886,7 @@ namespace Kagamin2
             Status.AverageDLSpeed = 0;
             Status.MaxDLSpeed = 0;
 
-            // エクスポートの応答データ作成
-            string str =
-                "HTTP/1.0 200 OK\r\n" +
-                "Server: Rex/8.0.0.2980\r\n" +
-                "Cache-Control: no-cache\r\n" +
-                "Pragma: no-cache\r\n" +
-                "Pragma: client-id=0\r\n" +
-                "Pragma: features=\"broadcast,playlist\"\r\n" +
-                "X-Server: " + Front.AppName + "\r\n" +
-                "Keep-Alive: timeout=1, max=0\r\n" +
-                "Connection: close\r\n" +
-                "Content-Type: application/x-mms-framed\r\n\r\n";
-            //ヘッダ上と下を繋げるメモリストリーム
-            MemoryStream ms1, ms2;
-            ms1 = new MemoryStream();
-            ms2 = new MemoryStream();
-            Encoding enc = Encoding.ASCII;
-            int count = enc.GetBytes(str).Length;
-            ms1.Write(enc.GetBytes(str), 0, count);
-            Status.DataRspMsg10 = ms1.ToArray();
+            MemoryStream ms = new MemoryStream();
 
             byte[] ack = new byte[1];
             byte[] asf_type = new byte[] { 0x24, 0x48 };    // ASF_HEADER
@@ -1983,7 +1924,7 @@ namespace Kagamin2
                         asf_head[9] = 0x0C;
                         asf_head[10] = asf_head[2];
                         asf_head[11] = asf_head[3];
-                        ms2.Write(asf_head, 0, 12);
+                        ms.Write(asf_head, 0, 12);
                         i = 0;
                         break;
                     }
@@ -1993,13 +1934,13 @@ namespace Kagamin2
                         throw new KagamiException("ストリームヘッダの取得中にエラーが発生しました(NotFoundASFHead at Top50KB)");
                     }
                 }
-                // ASF HEAD検出完了&自作HEADをms2に書き込み済み
-                // ASF HEADの本体を受信してms2に書き込み
+                // ASF HEAD検出完了&自作HEADをmsに書き込み済み
+                // ASF HEADの本体を受信してmsに書き込み
                 j = 0;
                 while (Status.RunStatus && Status.ImportURL != "待機中")
                 {
                     sock.Receive(ack);
-                    ms2.WriteByte(ack[0]);
+                    ms.WriteByte(ack[0]);
                     j++;
                     if (ack[0].Equals(ack_end[i])) i++; else i = 0;
 
@@ -2007,7 +1948,7 @@ namespace Kagamin2
                     {
                         //ASF HEADの終わりを検出
                         //msの配列の長さの確認
-                        Status.HeadStream = ms2.ToArray();
+                        Status.HeadStream = ms.ToArray();
                         //Front.AddLogData(Status, "ヘッダ取得完了");
                         try
                         {
@@ -2022,25 +1963,6 @@ namespace Kagamin2
                         throw new KagamiException("ストリームヘッダの取得中にエラーが発生しました(StreamHeader>50KBover)");
                     }
                 }
-
-                // エクスポートの応答データ作成
-                str =
-                    "HTTP/1.0 200 OK\r\n" +
-                    "Server: Rex/8.0.0.2980\r\n" +
-                    "Cache-Control: no-cache\r\n" +
-                    "Pragma: no-cache\r\n" +
-                    "Pragma: client-id=0\r\n" +
-                    "Pragma: features=\"broadcast,playlist\"\r\n" +
-                    "X-Server: " + Front.AppName + "\r\n" +
-                    "Keep-Alive: timeout=1, max=0\r\n" +
-                    "Connection: close\r\n" +
-                    "Content-Type: application/x-mms-framed\r\n\r\n";
-                //ヘッダ上と下を繋げるメモリストリーム
-                MemoryStream ms3;
-                ms3 = new MemoryStream();
-                count = enc.GetBytes(str).Length;
-                ms3.Write(enc.GetBytes(str), 0, count);
-                Status.HeadRspMsg10 = ms3.ToArray();
 
                 if (Status.ImportURL == "待機中")
                 {
@@ -2125,9 +2047,9 @@ namespace Kagamin2
                                 }
                                 else
                                 {
-                                    // typeが異常。とりあえずms2に退避
+                                    // typeが異常。とりあえずmsに退避
                                     ms.WriteByte(recv[0]);
-                                    // ms2が1000byteを超えていたらユーザに送信
+                                    // msが1000byteを超えていたらユーザに送信
                                     if (ms.Length > 1000)
                                     {
                                         // 送信
@@ -2168,10 +2090,10 @@ namespace Kagamin2
                                     break;
                                 default:
                                     #region type2異常
-                                    // type異常。同じくms2に退避
+                                    // type異常。同じくmsに退避
                                     ms.WriteByte(0x24);
                                     ms.WriteByte(recv[0]);
-                                    // ms2が1000byteを超えていたらユーザに送信
+                                    // msが1000byteを超えていたらユーザに送信
                                     if (ms.Length > 1000)
                                     {
                                         // 送信

@@ -670,9 +670,9 @@ namespace Kagamin2
                             {
                                 // 応答ヘッダ送信
                                 Front.AddLogDetail("SendRspMsg(Client)Sta-----\r\n" +
-                                                            enc.GetString(Status.DataRspMsg10) +
+                                                            enc.GetString(Status.HttpRspMsg) +
                                                             "\r\nSendRspMsg(Client)End-----");
-                                sock.Send(Status.DataRspMsg10);
+                                sock.Send(Status.HttpRspMsg);
                                 // ヘッダストリーム送信
                                 sock.Send(Status.HeadStream);
                             }
@@ -700,9 +700,9 @@ namespace Kagamin2
                             {
                                 // 応答ヘッダ送信
                                 Front.AddLogDetail("SendRspMsg(Client)Sta-----\r\n" +
-                                                            enc.GetString(Status.HeadRspMsg10) +
+                                                            enc.GetString(Status.HttpRspMsg) +
                                                             "\r\nSendRspMsg(Client)End-----");
-                                sock.Send(Status.HeadRspMsg10);
+                                sock.Send(Status.HttpRspMsg);
                                 // ヘッダストリーム送信
                                 sock.Send(Status.HeadStream);
                             }
