@@ -648,14 +648,15 @@ namespace Kagamin2
                 // エクスポートの応答データ作成
                 string str =
                     "HTTP/1.0 200 OK\r\n" +
-                    "Server: Rex/9.0.0.2980\r\n" +
+                    "Server: Rex/8.0.0.2980\r\n" +
                     "Cache-Control: no-cache\r\n" +
                     "Pragma: no-cache\r\n" +
-                    "Pragma: client-id=3320437311\r\n" +
-                    "Pragma: features=\"seekable,stridable\"\r\n" +
+                    "Pragma: client-id=0\r\n" +
+                    "Pragma: features=\"broadcast,playlist\"\r\n" +
                     "X-Server: " + Front.AppName + "\r\n" +
-                    "Content-Type: application/vnd.ms.wms-hdr.asfv1\r\n" +
-                    "Content-Length: " + Status.HeadStream.Length + "\r\n\r\n";
+                    "Keep-Alive: timeout=1, max=0\r\n" +
+                    "Connection: close\r\n" +
+                    "Content-Type: application/x-mms-framed\r\n\r\n";
                 //ヘッダ上と下を繋げるメモリストリーム
                 MemoryStream ms1;
                 ms1 = new MemoryStream();
@@ -1128,12 +1129,13 @@ namespace Kagamin2
                 // エクスポートの応答データ作成
                 string str =
                     "HTTP/1.0 200 OK\r\n" +
-                    "Server: Rex/9.0.0.2980\r\n" +
+                    "Server: Rex/8.0.0.2980\r\n" +
                     "Cache-Control: no-cache\r\n" +
                     "Pragma: no-cache\r\n" +
-                    "Pragma: client-id=3320437311\r\n" +
-                    "Pragma: features=\"seekable,stridable\"\r\n" +
+                    "Pragma: client-id=0\r\n" +
+                    "Pragma: features=\"broadcast,playlist\"\r\n" +
                     "X-Server: " + Front.AppName + "\r\n" +
+                    "Keep-Alive: timeout=1, max=0\r\n" +
                     "Connection: close\r\n" +
                     "Content-Type: application/x-mms-framed\r\n\r\n";
                 //データ取得応答ヘッダを保持
@@ -1927,12 +1929,13 @@ namespace Kagamin2
             // エクスポートの応答データ作成
             string str =
                 "HTTP/1.0 200 OK\r\n" +
-                "Server: Rex/9.0.0.2980\r\n" +
+                "Server: Rex/8.0.0.2980\r\n" +
                 "Cache-Control: no-cache\r\n" +
                 "Pragma: no-cache\r\n" +
-                "Pragma: client-id=3320437311\r\n" +
-                "Pragma: features=\"seekable,stridable\"\r\n" +
+                "Pragma: client-id=0\r\n" +
+                "Pragma: features=\"broadcast,playlist\"\r\n" +
                 "X-Server: " + Front.AppName + "\r\n" +
+                "Keep-Alive: timeout=1, max=0\r\n" +
                 "Connection: close\r\n" +
                 "Content-Type: application/x-mms-framed\r\n\r\n";
             //ヘッダ上と下を繋げるメモリストリーム
@@ -2023,14 +2026,15 @@ namespace Kagamin2
                 // エクスポートの応答データ作成
                 str =
                     "HTTP/1.0 200 OK\r\n" +
-                    "Server: Rex/9.0.0.2980\r\n" +
+                    "Server: Rex/8.0.0.2980\r\n" +
                     "Cache-Control: no-cache\r\n" +
                     "Pragma: no-cache\r\n" +
-                    "Pragma: client-id=3320437311\r\n" +
-                    "Pragma: features=\"seekable,stridable\"\r\n" +
+                    "Pragma: client-id=0\r\n" +
+                    "Pragma: features=\"broadcast,playlist\"\r\n" +
                     "X-Server: " + Front.AppName + "\r\n" +
-                    "Content-Type: application/vnd.ms.wms-hdr.asfv1\r\n" +
-                    "Content-Length: " + Status.HeadStream.Length + "\r\n\r\n";
+                    "Keep-Alive: timeout=1, max=0\r\n" +
+                    "Connection: close\r\n" +
+                    "Content-Type: application/x-mms-framed\r\n\r\n";
                 //ヘッダ上と下を繋げるメモリストリーム
                 MemoryStream ms3;
                 ms3 = new MemoryStream();
