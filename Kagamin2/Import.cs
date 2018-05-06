@@ -527,8 +527,7 @@ namespace Kagamin2
                 }
 
                 //ヘッダ上と下を繋げるメモリストリーム
-                MemoryStream ms2;
-                ms2 = new MemoryStream();
+                MemoryStream ms = new MemoryStream();
 
                 // ASFヘッダメモ: type(2)+size(2)+seq(4)+unk(2)+szcfm(2)
 
@@ -540,14 +539,14 @@ namespace Kagamin2
                 while (Status.RunStatus)
                 {
                     sock.Receive(ack);
-                    ms2.WriteByte(ack[0]);
+                    ms.WriteByte(ack[0]);
                     pos++;
                     if (ack[0].Equals(ack_sta[i])) i++; else i = 0;
                     if (i >= ack_sta.Length)
                     {
                         break;
                     }
-                    else if (ms2.Length > 50000)
+                    else if (ms.Length > 50000)
                     {
                         Status.ImportErrorContext = "ストリームヘッダ取得エラー(StreamHeader>50KBover)";
                         throw new KagamiException("ストリームヘッダの取得中にエラーが発生しました(StreamHeader>50KBover)");
@@ -559,10 +558,10 @@ namespace Kagamin2
                 // blk_size取得
                 int blk_size = 0;
                 sock.Receive(ack);
-                ms2.WriteByte(ack[0]);
+                ms.WriteByte(ack[0]);
                 blk_size += ack[0];
                 sock.Receive(ack);
-                ms2.WriteByte(ack[0]);
+                ms.WriteByte(ack[0]);
                 blk_size += (ack[0] << 8);
                 // 残りのヘッダ取得
                 int rsp_size = 0;
@@ -574,8 +573,8 @@ namespace Kagamin2
                 if (Status.RunStatus == false)
                     throw new KagamiException("ヘッダー取得中に終了要求が発生しました");
 
-                ms2.Write(ack, 0, blk_size);
-                Status.HeadStream = ms2.ToArray();
+                ms.Write(ack, 0, blk_size);
+                Status.HeadStream = ms.ToArray();
 
                 bool error_flg = false;
                 // size-cfmのチェック。異常でも突き進む？
@@ -1220,9 +1219,9 @@ namespace Kagamin2
                             if (recv[0] != 0x24)
                             {
                                 #region type1異常
-                                // typeが異常。とりあえずms2に退避
+                                // typeが異常。とりあえずmsに退避
                                 ms.WriteByte(recv[0]);
-                                // ms2が1000byteを超えていたらユーザに送信
+                                // msが1000byteを超えていたらユーザに送信
                                 if (ms.Length > 1000)
                                 {
                                     // 送信
@@ -1260,10 +1259,10 @@ namespace Kagamin2
                                     break;
                                 default:
                                     #region type2異常
-                                    // type異常。同じくms2に退避
+                                    // type異常。同じくmsに退避
                                     ms.WriteByte(0x24);
                                     ms.WriteByte(recv[0]);
-                                    // ms2が1000byteを超えていたらユーザに送信
+                                    // msが1000byteを超えていたらユーザに送信
                                     if (ms.Length > 1000)
                                     {
                                         // 送信
@@ -2131,9 +2130,9 @@ namespace Kagamin2
                                 }
                                 else
                                 {
-                                    // typeが異常。とりあえずms2に退避
+                                    // typeが異常。とりあえずmsに退避
                                     ms.WriteByte(recv[0]);
-                                    // ms2が1000byteを超えていたらユーザに送信
+                                    // msが1000byteを超えていたらユーザに送信
                                     if (ms.Length > 1000)
                                     {
                                         // 送信
@@ -2174,10 +2173,10 @@ namespace Kagamin2
                                     break;
                                 default:
                                     #region type2異常
-                                    // type異常。同じくms2に退避
+                                    // type異常。同じくmsに退避
                                     ms.WriteByte(0x24);
                                     ms.WriteByte(recv[0]);
-                                    // ms2が1000byteを超えていたらユーザに送信
+                                    // msが1000byteを超えていたらユーザに送信
                                     if (ms.Length > 1000)
                                     {
                                         // 送信
