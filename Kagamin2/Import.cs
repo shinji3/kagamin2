@@ -677,7 +677,6 @@ namespace Kagamin2
             bool temp1 = false;
             byte[] head = null;
             int ava_sum = 0;
-            int aca_tmp = 0;
             // 最初はStatus.ImportStatusはfalseになっている
             // ASF_STREAMING_DATA受信でtrueにする
             Status.ClientTime = DateTime.Now;
@@ -737,7 +736,6 @@ namespace Kagamin2
                                 }
 
                                 blk = null;
-                                aca_tmp = 0;
                                 ava_sum = 0;
                                 continue;
                             }
@@ -957,9 +955,6 @@ namespace Kagamin2
                             Front.AddLogData(0, Status, "ShoutCastストリームです。");
                             Status.ImportErrorContext = "ShoutCastストリームは対応していません。";
                             throw new KagamiException("ヘッダの取得中にエラーが発生しました(ICYプロトコル応答)");
-                            Status.ShoutCast = true;
-                            sock.Close();
-                            return;
                         }
                         try
                         {

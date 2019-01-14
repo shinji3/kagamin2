@@ -4401,10 +4401,13 @@ public class ListViewItemComparer : IComparer
             //Œ‹‰Ê‚ð•Ô‚·
             return result;
         }
+#if DEBUG
         catch (Exception e)
         {
-#if DEBUG
             MessageBox.Show(e.Message);
+#else
+        catch
+        {
 #endif
             return 0;
         }

@@ -374,7 +374,9 @@ namespace Kagamin2
                 string userAgent;
                 string host = "";
                 int priKagamiPort;//KagamiPort
+#if DEBUG
                 int KagamiLinkLevel = -1;//KagamiLink
+#endif
                 string authPass = "";
                 System.Text.Encoding enc;
 
@@ -465,7 +467,7 @@ namespace Kagamin2
                 string protocol = str.Substring(_s, _l);
                 Front.AddLogDetail("RecvReqMsg(Client)Sta-----\r\n" + str + "\r\nRecvReqMsg(Client)End-----");
 
-                #region KAGAMIリンク
+#region KAGAMIリンク
 #if DEBUG
                 if (protocol == "KAGAMI")
                 {
@@ -479,7 +481,7 @@ namespace Kagamin2
                     return "KAGAMI_LINK";
                 }
 #endif
-                #endregion
+#endregion
                 if (protocol != "HTTP")
                 {
                     Front.AddLogData(0, Status, "対応していないリクエスト(" + protocol + ")のため切断します [" + _ip + "]");
@@ -513,7 +515,7 @@ namespace Kagamin2
                     //切断するためnull返却
                     return "";
                 }
-                #region DenyUAチェック
+#region DenyUAチェック
 
                 foreach (string _denyua in Front.Acl.DenyUA)
                 {
@@ -545,7 +547,7 @@ namespace Kagamin2
                 }
 
 
-                #endregion
+#endregion
                 if (Front.Sock.VirtualHost)
                 {
                     try
@@ -575,7 +577,7 @@ namespace Kagamin2
                         //Front.AddLogData(1, Status, "authPass(ASCII):" + authPass);
 #endif
                     }
-                    catch (Exception ex)
+                    catch //(Exception ex)
                     {
 #if DEBUG
                         //Front.AddLogData(1, Status, ex.Message);
@@ -595,7 +597,7 @@ namespace Kagamin2
                         Thread.Sleep((int)Front.Sock.SockCloseDelay);
                         return "";
                     }
-                    #region sql
+#region sql
                     /*
                     else if (Front.Opt.MySQLEnable && Status.SQLOn)
                     {
@@ -654,9 +656,9 @@ namespace Kagamin2
 
                     
                     }*/
-                    #endregion
+#endregion
                 }
-                #region kagami-port
+#region kagami-port
                 // 鏡ポートを取り出す
                 int _idx = str.IndexOf("Pragma: kagami-port=");
                 if (_idx < 0)
@@ -683,9 +685,9 @@ namespace Kagamin2
                         }
                     }
                 }
-                #endregion
+#endregion
 
-                #region kagami-link
+#region kagami-link
 #if DEBUG
                 // 鏡リンクを取り出す
                 _idx = str.IndexOf("Pragma: kagami-link=");
@@ -715,10 +717,10 @@ namespace Kagamin2
                 Front.AddLogData(0, Status, "KagamiLink=" + KagamiLinkLevel);
 #endif
 #endif
-                #endregion
+#endregion
 
 
-                #endregion
+#endregion
 
 
                 bool _browser = false;
@@ -743,7 +745,7 @@ namespace Kagamin2
                 }
                 if (_browser || _mobile)
                 {
-                    #region Mozilla処理
+#region Mozilla処理
                     string ackMsg = "";
                     string head = "";
                     string childMsg = "";
@@ -885,7 +887,7 @@ namespace Kagamin2
                     enc = Encoding.GetEncoding("Shift_JIS");
                     sock.Send(enc.GetBytes(head + ackMsg));
                     Front.AddLogData(0, Status, "コネクションを切断します [" + _ip + "]");
-                    #endregion
+#endregion
                     //切断するためnull返却
                     return "";
                 }
@@ -894,7 +896,7 @@ namespace Kagamin2
 
 
                     // Mozilla以外なら美人チェックする
-                    #region 美人チェック処理
+#region 美人チェック処理
                     ///自分への転送を許可しない場合はビジー応答
                     if (userAgent.Contains("PriCheck") == true && Front.Opt.NotMyTrans == true)
                     {
@@ -934,7 +936,7 @@ namespace Kagamin2
                                 (priKagamiPort != 0 && Front.Opt.PriKagamin == false) ||
                                 (userAgent.IndexOf("kagami/") >= 0 && Front.Opt.PriKagamiexe == false))
                             {
-                                #region 美人処理
+#region 美人処理
                                 string _hostport = null;
                                 uint _cont;
                                 //
@@ -1054,7 +1056,7 @@ namespace Kagamin2
                                         Front.AddLogData(1, Status, "ビジーメッセージが送信できませんでした。");
                                     }
                                     Status.BusyCounter++;
-                                #endregion
+#endregion
                                     //切断するためnull返却
                                     return "";
                                 }
@@ -1062,7 +1064,7 @@ namespace Kagamin2
 
                         }
                     }
-                    #endregion
+#endregion
 
                     // 美人じゃない
                     if (userAgent.IndexOf("NSPlayer") == 0 || ((userAgent.IndexOf("shoutcastsource") == 0 || userAgent.IndexOf("WinampMPEG") == 0) && Status.ShoutCast))
@@ -1094,7 +1096,7 @@ namespace Kagamin2
 
                         if (str.IndexOf("x-mms-framed") > 0 || str.IndexOf("stream-switch") > 0 || Status.Type == 2 || Status.ShoutCast)
                         {
-                            #region NSPlayerヘッダ送信＋接続持続
+#region NSPlayerヘッダ送信＋接続持続
                             try
                             {
                                 // 応答ヘッダ送信
@@ -1162,7 +1164,7 @@ namespace Kagamin2
                                 Front.AddLogData(1, Status, "ヘッダ送信NG/コネクションを切断します(理由:" + ex.Message + ") [" + _ip + "]");
                                 return "";
                             }
-                            #endregion
+#endregion
                             //接続保持のためUserAgent返却
                             //子鏡接続の場合、ポート番号を付加したUAを返却
                             //KagamiLinkが0以上の場合は鏡リンクも付加
@@ -1180,7 +1182,7 @@ namespace Kagamin2
                         // ヘッダのみ送ってすぐに切断する
                         else
                         {
-                            #region NSPlayerヘッダ送信＋接続終了
+#region NSPlayerヘッダ送信＋接続終了
                             //Front.AddLogData(Status, "ヘッダ送信＋終了＋1.1");
                             Front.AddLogData(0, Status, "ヘッダを取得するための接続 UA: " + userAgent);
                             try
@@ -1238,7 +1240,7 @@ namespace Kagamin2
                             catch { }
 
                             Front.AddLogData(0, Status, "コネクションを切断します [" + _ip + "]");
-                            #endregion
+#endregion
                             //切断するためnull返却
                             return "";
 

@@ -171,7 +171,7 @@ namespace Kagamin2
                             if (cd.IsAlive)
                                 cd.StreamQueue.Enqueue(_byte);
                         }
-                        catch (Exception ex)
+                        catch
                         {
                             cd.Disc();
                             cd.StreamQueue.Clear();
