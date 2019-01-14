@@ -703,7 +703,7 @@ namespace Kagamin2
                 else if (http_status != 200)
                     _busy = true;
 
-                string chkMsg = "Content-Type: application/x-mms-frame";
+                string chkMsg = "Content-Type: application/x-mms-framed";
                 byte[] chkBytes = enc.GetBytes(chkMsg);
                 byte[] ack = new byte[1];
                 byte[] ack_log = new byte[50000];
