@@ -46,7 +46,8 @@
 │<TRF_DL_DAY> … 日間DL転送量
 │<TRF_UP_MON> … 月間UP転送量
 │<TRF_DL_MON> … 月間DL転送量
-│
+│<BAND_TYPE>  … 帯域制限方式
+｜<BAND_NUM>　 … 帯域制限値(Kbps)
 └────────────────────────────────────────────────────
 以下、<KAGAMI>の置換用定義
 
@@ -80,11 +81,14 @@ PORT:<PORT> 待機中<br>
 <form method="get" name=send action="/admin.html">
 PORT:<PORT> 接続試行中<br>
 コメント:<COMMENT><br>
+認証ID/PASS:<AUTH_ID>/<AUTH_PASS><Br>
 帯域制限:<BANDWIDTH><br>
 接続数:<CONN>/<input type="text" size="5" name="conn" value="<MAXCONN>"><input type="submit" value="設"><br>
 <a href="/admin.html?mode=dis&Port=<PORT>&password=<ADMIN_PASS>">強制切断</a><br>
 <a href="/set.html?port=<PORT>&password=<ADMIN_PASS>">強制設定変更</a><br>
-<a href="/admin.html?mode=stop&port=<PORT>&password=<ADMIN_PASS>">強制停止</a>
+<a href="/admin.html?mode=stop&port=<PORT>&password=<ADMIN_PASS>">強制停止</a><br>
+<a href="/admin.html?mode=bandup&port=<PORT>&password=<ADMIN_PASS>">帯域制限値アップ</a><Br>
+<a href="/admin.html?mode=banddown&port=<PORT>&password=<ADMIN_PASS>">帯域制限値ダウン</a>
 <input type="hidden" name="mode" value="chg">
 <input type="hidden" name="port" value="<PORT>">
 <input type="hidden" name="password" value="<ADMIN_PASS>">
@@ -97,11 +101,14 @@ PORT:<PORT> 接続試行中<br>
 PORT:<PORT> 接続中<br>
 接続時間:<TIME><br>
 コメント:<COMMENT><br>
+認証ID/PASS:<AUTH_ID>/<AUTH_PASS><Br>
 帯域制限:<BANDWIDTH><br>
 接続数:<CONN>/<input type="text" size="5" name="conn" value="<MAXCONN>"><input type="submit" value="設"><br>
 <a href="/admin.html?mode=dis&Port=<PORT>&password=<ADMIN_PASS>">強制切断</a><br>
 <a href="/set.html?port=<PORT>&password=<ADMIN_PASS>">強制設定変更</a><br>
-<a href="/admin.html?mode=stop&port=<PORT>&password=<ADMIN_PASS>">強制停止</a>
+<a href="/admin.html?mode=stop&port=<PORT>&password=<ADMIN_PASS>">強制停止</a><br>
+<a href="/admin.html?mode=bandup&port=<PORT>&password=<ADMIN_PASS>">帯域制限値アップ</a><Br>
+<a href="/admin.html?mode=banddown&port=<PORT>&password=<ADMIN_PASS>">帯域制限値ダウン</a>
 <input type="hidden" name="mode" value="chg">
 <input type="hidden" name="port" value="<PORT>">
 <input type="hidden" name="password" value="<ADMIN_PASS>">
@@ -117,6 +124,7 @@ PORT:<PORT> 接続中<br>
 ≪全般設定≫<br>
 新規接続:<PAUSE>[<a href="/admin.html?mode=pause&password=<ADMIN_PASS>">切替</a>]<br>
 帯域制限:<BAND>[<a href="/admin.html?mode=band&password=<ADMIN_PASS>">切替</a>]<br>
+帯域制限方式:<BAND_TYPE>[<a href="/admin.html?mode=bandchg&password=<ADMIN_PASS>">切替</a>]<br>
 枠:<input type="text" size="5" name="conn" value="<MAXCONN>"><input type="submit" value="全ポート待受開始"><br>
 <input type="hidden" name="mode" value="startall">
 <input type="hidden" name="password" value="<ADMIN_PASS>">

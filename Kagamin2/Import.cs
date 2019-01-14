@@ -55,6 +55,15 @@ namespace Kagamin2
         /// Push配信でSetup要求を行ったIPアドレス
         /// </summary>
         private string SetupIp;
+        /// <summary>
+        /// 認証拒否フラグ
+        /// </summary>
+        private bool AuthCancel;
+        /// <summary>
+        /// 認証を要求フラグ
+        /// </summary>
+        private bool AuthFlag;
+
         #endregion
 
         /// <summary>
@@ -101,6 +110,8 @@ namespace Kagamin2
                         while (Status.ImportURL == "待機中" && Status.Type == 1 && Status.RunStatus)
                             Thread.Sleep(1000);
 
+                        
+                        
                         // GUIからの終了要求を受信した場合、そのまま終了
                         if (Status.RunStatus == false)
                             break;
@@ -144,7 +155,7 @@ namespace Kagamin2
                             bSetup = false; // Setup未受信
                             try
                             {
-                                // Push配信開始によってImportURLが「待機中」以外になるか
+                                // Push配信開始によってImportURLが「待機中」以外になるか、
                                 // WebエントランスからPush配信停止要求が来るか
                                 // Push配信受付タイムアウトになるか、
                                 // GUIからの切断要求が来るまでListen継続
@@ -172,11 +183,11 @@ namespace Kagamin2
                             finally
                             {
                                 if (_timeout_flg)
-                                    Front.AddLogData(1, Status, "Push配信受付ポートを停止します(受付時間超過)");
-                                else if (Status.Type != 2 || !Status.RunStatus)
-                                    Front.AddLogData(1, Status, "Push配信受付ポートを停止します(停止要求)");
+                                    Front.AddLogData(0, Status, "Push配信受付ポートを停止します(受付時間超過)");
+                                else if(Status.Type != 2 || !Status.RunStatus)
+                                    Front.AddLogData(0, Status, "Push配信受付ポートを停止します(停止要求)");
                                 else
-                                    Front.AddLogData(1, Status, "Push配信受付ポートを停止します(配信開始)");
+                                    Front.AddLogData(0, Status, "Push配信受付ポートを停止します(配信開始)");
                                 try
                                 {
                                     //リスナーで待機しているクライアントをすべて切断する
@@ -217,6 +228,7 @@ namespace Kagamin2
                     // インポート先へ接続
                     if (Status.Type != 2)
                     {
+                        Status.Gui.ReserveItem.Clear();
                         // 内側接続または外側接続
                         Front.AddLogData(0, Status, "インポートタスクを開始します");
                         ImportTask();
@@ -235,18 +247,23 @@ namespace Kagamin2
                         Status.RunStatus = false;
                         break;
                     }
+                    if (Status.ListenStop == true)
+                    {
+                        Status.RunStatus = false;
+                        break;
+                    }
                     // 外部接続でGUIの切断要求受信なら終了
                     if (Status.RunStatus == false)
                     {
                         break;
                     }
 
+
+
                     // 不要な情報はクリア
                     // ただしPush配信のときは待ちうけに戻っても状態保持のためクリアしない。
                     if (Status.Type == 2)
                     {
-                        // Push配信でRunStatus正常ならPush配信要求待ちに戻る
-                        Front.AddLogData(1, Status, "Push配信待ち受け状態に戻ります");
                         // 切断のための値設定
                         Status.ImportStatus = false;
                         Status.ImportURL = "待機中";
@@ -261,6 +278,8 @@ namespace Kagamin2
                         Status.AverageDLSpeed = 0;
                         Status.TrafficCount = 0;
                         Status.MaxDLSpeed = 0;
+                        Status.ConnectionMax = 0;
+
                         // 最大接続数をユーザ指定値に戻す
                         Status.Connection = Status.Conn_UserSet;
                     }
@@ -276,6 +295,9 @@ namespace Kagamin2
                     Status.HeadRspMsg10 = null;
                     //Status.HeadRspMsg11 = null;
                     Status.HeadStream = null;
+                    Status.ConnectionMax = 0;
+                    Status.SelectMulti = false;
+                    Status.tempMulti = false;
                     //念のため
                     try
                     {
@@ -318,8 +340,8 @@ namespace Kagamin2
             Status.BusyCounter = 0;
             Status.RetryCounter = 0;
             Status.ImportError = 0;
-            Status.ExportError = 0;
             Status.ExportCount = 0;
+            Status.ExportError = 0;
             // 再接続ループ
             while (Status.RunStatus && Status.ImportURL != "待機中")
             {
@@ -333,27 +355,71 @@ namespace Kagamin2
                     // ヘッダ取得要求送信
                     GetHeader();
                     Front.AddLogData(1, Status, "インポート：ヘッダ取得完了");
-                    // データ取得要求送信
-                    GetStream();
-                    // インポート受信ループ開始
-                    Front.AddLogData(1, Status, "インポートソースの取り込みを開始しました");
-                    RecvStreamLoop();
-                    Front.AddLogData(1, Status, "インポートソースの取り込みを終了しました");
+                    if (!Status.ShoutCast)
+                    {
+                        // データ取得要求送信
+                        GetStream();
+                        // インポート受信ループ開始
+                        Front.AddLogData(1, Status, "インポートソースの取り込みを開始しました");
+                        RecvStreamLoop();
+                        Front.AddLogData(1, Status, "インポートソースの取り込みを終了しました");
+                    }
+                    else
+                    {
+                        Front.AddLogData(1, Status, "インポートソースの取り込みを開始しました");
+                        ShutCastRecv();
+                        Front.AddLogData(1, Status, "インポートソースの取り込みを終了しました");
+                    }
                 }
                 catch (KagamiException ke)
                 {
                     Front.AddLogData(ke.LogLv, Status, ke.Message);
-                    if (ke.Message.IndexOf("リダイレクト") >= 0)
+                    if ((ke.Message.IndexOf("リダイレクト") >= 0 && Front.Opt.ImportRedirect)
+                        || ke.Message.IndexOf("マルチ") >= 0)
                     {
-                        // リダイレクト要求による切断の場合、即再接続
+                        // リダイレクト要求による切断の場合またはマルチビットレート切り替え時、即再接続
                         continue;
+                    }
+                    //認証要求時
+                    if (AuthFlag && Status.Type == 0)
+                    {
+                        if (Status.ImportAuthID == "" || Status.ImportAuthPass == "" || AuthCancel)
+                        {
+                            for (int i = 0; i < 30; i++)
+                                if (Front.AuthDiagflag)
+                                    break;
+                                else
+                                    Thread.Sleep(1000);
+
+                            Front.AuthDiagflag = true;
+                            AuthDiag authdiag = new AuthDiag(Status);
+                            AuthCancel = false;
+                            if (authdiag.ShowDialog() == DialogResult.Cancel)
+                            {
+                                Front.AddLogData(1, Status, "インポートソースの取り込みを終了しました");
+                                Status.RunStatus = false;
+                            }
+                            else
+                            {
+                                continue;
+                            }
+
+
+                        }
+                        //IDがあり拒否されていなければ登録済みのIDパスを使用する
+                        continue;
+
                     }
                 }
                 catch (Exception e)
                 {
                     Front.AddLogData(1, Status, "インポートエラー(内部エラー:" + e.Message + "/Trace:" + e.StackTrace + ")");
                 }
-
+                if (Status.tempMulti)
+                {
+                    Status.tempMulti = false;
+                    continue;
+                }
                 try
                 {
                     // 接続が切れたのでリトライカウンタをカウントＵＰ。
@@ -391,15 +457,7 @@ namespace Kagamin2
             }
         }
 
-        #region インポート先から実際にデータを取得する処理
-
-        /// <summary>
-        /// 相手先へ接続し、ヘッダを受信したら切断する
-        /// 取得したヘッダはStatus.Data.Header/Status.Data.Header2に保存しておく
-        /// ヘッダ取得に失敗した場合はKagamiExceptionをthrowする
-        /// </summary>
-        /// <returns></returns>
-        private void GetHeader()
+        private void ShutCastRecv()
         {
             if (Status.RunStatus == false)
             {
@@ -428,20 +486,430 @@ namespace Kagamin2
                 Status.ImportErrorContext = "インポート接続エラー";
                 throw new KagamiException("インポート先に接続できませんでした");
             }
+            //クライアントに偽装したヘッダを送信
+            string reqMsg = "GET / HTTP/1.0\r\n" +
+                    "Accept: */*\r\n" +
+                    "User-Agent: " + Front.UserAgent + "\r\n" +
+                    "Host: " + ((IPEndPoint)sock.RemoteEndPoint).Address.ToString() + ":" + ((IPEndPoint)sock.RemoteEndPoint).Port + "\r\n" +
+                    "Icy-MetaData:1\r\n" +
+                    "Connection: close\r\n\r\n";
+            System.Text.Encoding enc = System.Text.Encoding.Default; // "euc-jp"
+            byte[] reqBytes = enc.GetBytes(reqMsg);
 
+            //リクエスト送信
+            Front.AddLogDetail("SendReqMsg(Head)Sta-----\r\n" + reqMsg + "\r\nSendReqMsg(Head)End-----");
+            sock.Send(reqBytes, reqBytes.Length, System.Net.Sockets.SocketFlags.None);
+
+            //まずはHTTP応答ヘッダまで取得
+            byte[] ack = new byte[1];
+            byte[] ack_end = { 0x0a, 0x0a }; // '\n', '\n'
+            byte[] ack_log = new byte[50000];
+            byte[] icy_code = new byte[3];
+            byte[] sts_code = new byte[3];
+            string icy_log = "";
+            string icy_name = "";
+            string icy_genre = "";
+            string icy_url = "";
+            int icy_metaint = 0;
+            string icy_pub = "";
+            int icy_br = 0;
+            int i = 0;
+            int count = 0;
+            while (Status.RunStatus)
+            {
+                sock.Receive(ack);
+                ack_log[count] = ack[0];
+                count++;
+
+                // HTTP応答ヘッダの終わりを検索
+                if (ack[0].Equals(0x0d)) continue;  // '\r'
+                if (ack[0].Equals(ack_end[i])) i++; else i = 0;
+
+                //ack_endに入れた文字列と同じものが受信できたか判定
+                //文字が見つからず、受信したデータが50000バイトを超えたらエラー扱いにする
+                //ほとんどの場合、5000～6000バイトで見つかる
+                //50000まで行くとエラーの可能性大
+                if (i >= ack_end.Length)
+                {
+                    // HTTP StatusCode取得
+                    // 9～11文字目を取得
+                    // 0123456789abcde
+                    // HTTP/1.x 200 OK
+                    int http_status = 0;
+
+                    icy_code[0] = ack_log[0];
+                    icy_code[1] = ack_log[1];
+                    icy_code[2] = ack_log[2];
+
+                    sts_code[0] = ack_log[4];
+                    sts_code[1] = ack_log[5];
+                    sts_code[2] = ack_log[6];
+
+                    try
+                    {
+                        Front.AddLogDetail("RecvRspMsg(Head)Sta-----\r\n" +
+                                     System.Text.Encoding.ASCII.GetString(ack_log, 0, count) +
+                                     "\r\nRecvRspMsg(Head)End-----");
+                        //Shoutcastソース
+                        if (System.Text.Encoding.ASCII.GetString(icy_code) != "ICY")
+                        {
+                            Status.ImportErrorContext = "ShoutCastデータエラー";
+                            throw new KagamiException("ShoutCastデータエラー");
+
+                        }
+                        http_status = int.Parse(System.Text.Encoding.ASCII.GetString(sts_code));
+                    }
+                    catch
+                    {
+                        //HTTP StatusCode変換失敗
+                        Status.ImportErrorContext = "ヘッダ取得エラー(ICY応答ヘッダ異常)";
+                        throw new KagamiException("ヘッダの取得中にエラーが発生しました(ICY応答ヘッダ異常)");
+                    }
+                    if (http_status == 200)
+                    {
+                        break;
+                    }
+                    Status.ImportErrorContext = "インポートソースはビジーです。[ICYStatusCode=" + http_status + "]";
+                    throw new KagamiException("インポートソースはビジーです。[ICYStatusCode=" + http_status + "]");
+
+
+                }
+                else if (count >= 50000)
+                {
+                    Front.AddLogDetail("RecvRspMsg(Head)Sta-----\r\n" +
+                                 System.Text.Encoding.ASCII.GetString(ack_log, 0, count) +
+                                 "\r\nRecvRspMsg(Head)End-----");
+                    Status.ImportErrorContext = "ICYヘッダ取得エラー(Header>50KBover)";
+                    throw new KagamiException("ICYヘッダの取得中にエラーが発生しました(Header>50KBover)");
+                }
+            }
+            icy_log = System.Text.Encoding.ASCII.GetString(ack_log, 0, count);
+            if (icy_log.Contains("icy-name:"))
+            {
+                icy_name = icy_log.Substring(icy_log.IndexOf("icy-name:") + 9, icy_log.IndexOf("\r\n", icy_log.IndexOf("icy-name:")) - icy_log.IndexOf("icy-name:") - 9);
+                Front.AddLogData(0, Status, "icy-name:" + icy_name);
+            }
+            if (icy_log.Contains("icy-genre:"))
+            {
+                icy_genre = icy_log.Substring(icy_log.IndexOf("icy-genre:") + 10, icy_log.IndexOf("\r\n", icy_log.IndexOf("icy-genre:")) - icy_log.IndexOf("icy-genre:") - 10);
+                Front.AddLogData(0, Status, "icy-genre:" + icy_genre);
+            }
+            if (icy_log.Contains("icy-url:"))
+            {
+                icy_url = icy_log.Substring(icy_log.IndexOf("icy-url:") + 8, icy_log.IndexOf("\r\n", icy_log.IndexOf("icy-url:")) - icy_log.IndexOf("icy-url:") - 8);
+                Front.AddLogData(0, Status, "icy-url:" + icy_url);
+            }
+            if (icy_log.Contains("icy-pub:"))
+            {
+                icy_pub = icy_log.Substring(icy_log.IndexOf("icy-pub:") + 8, icy_log.IndexOf("\r\n", icy_log.IndexOf("icy-pub:")) - icy_log.IndexOf("icy-pub:") - 8);
+                Front.AddLogData(0, Status, "icy-pub:" + icy_pub);
+            }
+            if (icy_log.Contains("icy-metaint:"))
+            {
+                icy_metaint = int.Parse(icy_log.Substring(icy_log.IndexOf("icy-metaint:") + 12, icy_log.IndexOf("\r\n", icy_log.IndexOf("icy-metaint:")) - icy_log.IndexOf("icy-metaint:") - 12));
+                Front.AddLogData(0, Status, "icy-metaint:" + icy_metaint.ToString());
+            }
+            if (icy_log.Contains("icy-br:"))
+            {
+                icy_br = int.Parse(icy_log.Substring(icy_log.IndexOf("icy-br:") + 7, icy_log.IndexOf("\r\n", icy_log.IndexOf("icy-br:")) - icy_log.IndexOf("icy-br:") - 7));
+                Front.AddLogData(0, Status, "icy-br:" + icy_br.ToString());
+            }
+
+            string str = icy_log;
+            if (str.IndexOf("\r\n") < 0)
+            {
+                //改行コードがLFのみならCR+LFに置換する
+                str = str.Replace("\n", "\r\n");
+            }
+            MemoryStream ms1, ms2;
+            ms1 = new MemoryStream();
+            ms2 = new MemoryStream();
+            count = enc.GetBytes(str).Length;
+            ms1.Write(enc.GetBytes(str), 0, count);
+            Status.HeadRspMsg10 = ms1.ToArray();
+            //Status.HeadRspMsg11 = ms1.ToArray();
+            //Status.HeadRspMsg10[7] = 0x30;  //HTTP1.0
+            Status.DataRspMsg10 = Status.HeadRspMsg10;
+
+            //Status.HeadRspMsg11[7] = 0x31;  //HTTP1.1
+           //ack_end = new byte[]{ 0x3b, 0x00,0x00,0x00,0x00,0x00,0x00,0x00 }; 
+
+            MemoryStream ms = new MemoryStream();
+            int recv_timeout = 0;
+            int ava_size = 0;
+            //int blk_size = 0;
+            //int rsp_size = 0;
+
+            byte[] recv = new byte[1];
+            byte[] asf_head = null;
+            byte[] asf_head2 = null;
+            byte[] blk = null;
+
+            count = 0;
+            while (Status.RunStatus)
+            {
+                sock.Receive(recv);
+                ms.WriteByte(recv[0]);
+                count++;
+                if (count == icy_metaint)
+                    break;
+            }
+            Front.AddLogData(0, Status, enc.GetString(ms.ToArray()));
+            Status.DataRspMsg10 = ms.ToArray();
+            sock.Receive(recv);
+            asf_head = new byte[recv[0] * 16];
+            asf_head2 = new byte[recv[0] * 16 + 1];
+            sock.Receive(asf_head);
+            asf_head2[0] = recv[0];
+            i=1;
+            while (i < recv[0] * 16 + 1)
+            {
+                asf_head2[i] = asf_head[i - 1];
+                i++;
+            }
+            Front.AddLogData(0, Status, enc.GetString(asf_head2));
+            Status.HeadStream = asf_head2;
+            // ストリーム受信が正常に出来ていればtrue。
+            // ImportStatusは外部から書き換えられるので、
+            // TimeOut判定ではこちらを利用
+            bool once_status = false;
+            bool temp = false;
+            bool temp1 = false;
+            byte[] head = null;
+            int ava_sum = 0;
+            int aca_tmp = 0;
+            // 最初はStatus.ImportStatusはfalseになっている
+            // ASF_STREAMING_DATA受信でtrueにする
+            Status.ClientTime = DateTime.Now;
+            Status.ImportStatus = true;
+            Status.RetryCounter = 0;
+
+            while (Status.RunStatus && Status.ImportURL != "待機中")
+            {
+                ava_size = sock.Available;
+                // ASFブロック長を知るために最低4byte受信したい
+
+                if (ava_size > icy_metaint)
+                {
+                    try
+                    {
+                        //メタデータ
+                        if (ava_sum == icy_metaint)
+                        {
+                            sock.Receive(recv);
+                            if (recv[0] == (Int32)0)
+                            {
+                                //Status.Client.StreamWrite(recv);
+                                temp = true;
+                                ava_sum = 0;
+                                //continue;
+                            }
+                            else
+                            {
+
+
+                                try
+                                {
+                                    blk = new byte[recv[0] * 16];
+                                    sock.Receive(blk);
+                                    //Status.DataRspMsg10 = null;
+                                    i = 1;
+                                    asf_head2 = null;
+                                    asf_head2 = new byte[recv[0] * 16 + 1];
+                                    asf_head2[0] = recv[0];
+                                    while (i < recv[0] * 16 + 1)
+                                    {
+                                        asf_head2[i] = blk[i - 1];
+                                        i++;
+                                    }
+                                    Status.HeadStream = asf_head2;
+                                    Front.AddLogData(0, Status, enc.GetString(asf_head2));
+                                    //Front.AddLogData(0, Status, asf_head2);
+                                    //byte temp=
+                                    //Status.Client.StreamWrite(recv);
+                                    Status.Client.StreamWrite(asf_head2);
+
+                                    //Front.AddLogData(0, Status, enc.GetString(recv));
+                                }
+                                catch
+                                {
+                                    Front.AddLogData(0, Status, enc.GetString(recv));
+                                }
+
+                                blk = null;
+                                aca_tmp = 0;
+                                ava_sum = 0;
+                                continue;
+                            }
+                        }
+                        {
+                            blk = new byte[icy_metaint];
+                            sock.Receive(blk);
+                            Status.DataRspMsg10 = null;
+                            Status.DataRspMsg10 = new byte[icy_metaint];
+                            Status.DataRspMsg10 = blk;
+                            if (temp)
+                            {
+                                i = 1;
+                                head = new byte[icy_metaint + 1];
+                                head[0] = recv[0];
+                                while (i < icy_metaint)
+                                {
+                                    head[i] = blk[i - 1];
+                                    i++;
+                                }
+                                temp = false;
+                            }
+                            else if (temp1)
+                            {
+                                head = blk;
+                                //Status.Client.StreamWrite(Status.HeadStream);
+                                /*
+                                i = Status.HeadStream.Length;
+                                int j=i;
+                                head = new byte[icy_metaint + i];
+                                head = Status.HeadStream;
+                                while (i < icy_metaint + j)
+                                {
+                                    head[i] = blk[i - icy_metaint + j];
+                                    i++;
+                                }
+                                 */
+                                temp1 = false;
+
+                            }
+                            else
+                            {
+                                head = blk;
+                            }
+                            Status.Client.StreamWrite(head);
+                            ava_sum += blk.Length;
+                            //Front.AddLogData(0, Status, blk.Length.ToString());
+                            blk = null;
+
+                        }
+                        recv_timeout = 0;
+ 
+                    }
+                    catch (Exception ex)
+                    {
+                        Front.AddLogData(0, Status, ex.Message);
+                    }
+                }
+                else
+                {
+                    // 読み取り可能データが4byte以下しか無ければ
+                    // タイムアウトカウンタをUP
+                    Thread.Sleep(10);
+                    recv_timeout++;
+                    if (recv_timeout > Front.Sock.SockRecvTimeout / 10)
+                        break;  //Timeout
+                }
+            }
+            if (Status.RunStatus == false || (Status.ImportStatus == false && once_status == true))
+            {
+                // RunStatusがfalseになった(GUIからの切断)、または
+                // once_statusがtrue(正常受信中)にImportStatusがfalse(外部からの切断要求)を受けた場合
+
+                Front.AddLogData(1, Status, "インポート接続の切断要求を受信しました");
+                // ユーザ指示による切断では切断音を鳴らさない
+                //if (File.Exists(Front.Opt.SndDiscFile))
+                //    PlaySound(Front.Opt.SndDiscFile);
+            }
+            else
+            {
+                Front.AddLogData(1, Status, "インポート先からの受信がタイムアウトしました");
+                Status.ImportErrorContext = "インポート受信タイムアウト";
+                Status.ImportError++;
+                // IM切断音が設定されていたら別スレッドで再生する
+                if (File.Exists(Front.Opt.SndDiscFile))
+                    PlaySound(Front.Opt.SndDiscFile);
+            }
+
+
+
+
+        }
+        #region インポート先から実際にデータを取得する処理
+
+        /// <summary>
+        /// 相手先へ接続し、ヘッダを受信したら切断する
+        /// 取得したヘッダはStatus.Data.Header/Status.Data.Header2に保存しておく
+        /// ヘッダ取得に失敗した場合はKagamiExceptionをthrowする
+        /// </summary>
+        /// <returns></returns>
+        private void GetHeader()
+        {
+            if (Status.RunStatus == false)
+            {
+                throw new KagamiException("ヘッダー取得中に終了要求が発生しました");
+            }
+            try
+            {
+                //Socketの作成
+                sock = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork,
+                    System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
+
+
+
+                IPAddress hostadd = Dns.GetHostAddresses(Status.ImportHost)[0];
+
+                //MessageBox.Show(Dns.GetHostAddresses(Status.ImportHost)[0].ToString());
+                IPEndPoint ephost = new System.Net.IPEndPoint(hostadd, Status.ImportPort);
+
+                sock.SendTimeout = (int)Front.Sock.SockConnTimeout;       // Import接続 ヘッダ取得要求送信のタイムアウト値
+                sock.ReceiveTimeout = (int)Front.Sock.SockConnTimeout;    // Import接続 ヘッダ取得応答受信のタイムアウト値
+
+                //接続
+                
+                sock.Connect(ephost);
+            }
+            catch
+            {
+                sock.Close();
+                // IM接続NG音が設定されていたら再生
+                if (File.Exists(Front.Opt.SndConnNgFile))
+                    PlaySound(Front.Opt.SndConnNgFile);
+                Status.ImportErrorContext = "インポート接続エラー";
+                throw new KagamiException("インポート先に接続できませんでした");
+            }
+                System.Text.Encoding enc = System.Text.Encoding.ASCII; // "euc-jp"
             try
             {
                 //クライアントに偽装したヘッダを送信
-                string reqMsg = "GET / HTTP/1.0\r\n" +
-                        "Accept: */*\r\n" +
-                        "User-Agent: " + Front.UserAgent + "\r\n" +
-                        "Host: " + ((IPEndPoint)sock.RemoteEndPoint).Address.ToString() + ":" + ((IPEndPoint)sock.RemoteEndPoint).Port + "\r\n" +
-                        "Pragma: no-cache\r\n" +
-                        #if !DEBUG
-                        "Pragma: kagami-port=" + Status.MyPort + "\r\n" +
-                        #endif
-                        "Content-Type: application/x-mms-framed\r\n\r\n";
-                System.Text.Encoding enc = System.Text.Encoding.ASCII; // "euc-jp"
+                string reqMsg = "";
+                if (AuthFlag)
+                {
+
+                    string _auth = Convert.ToBase64String(enc.GetBytes(Status.ImportAuthID + ":" + Status.ImportAuthPass));
+                    reqMsg = "GET / HTTP/1.0\r\n" +
+                            "Accept: */*\r\n" +
+                            "User-Agent: " + Front.UserAgent + "\r\n" +
+                            "Host: " + ((IPEndPoint)sock.RemoteEndPoint).Address.ToString() + ":" + ((IPEndPoint)sock.RemoteEndPoint).Port + "\r\n" +
+                            "Pragma: no-cache\r\n" +
+                            "Pragma: kagami-port=" + Status.MyPort + "\r\n" +
+#if DEBUG
+                            "Pragna: kagami-link=5\r\n" +
+#endif
+                            "Content-Type: application/x-mms-framed\r\n" +
+                            "Authorization: Basic " + _auth + "\r\n\r\n";
+                }
+                else
+                {
+
+                    reqMsg = "GET / HTTP/1.0\r\n" +
+                             "Accept: */*\r\n" +
+                             "User-Agent: " + Front.UserAgent + "\r\n" +
+                             "Host: " + ((IPEndPoint)sock.RemoteEndPoint).Address.ToString() + ":" + ((IPEndPoint)sock.RemoteEndPoint).Port + "\r\n" +
+                             "Pragma: no-cache\r\n" +
+                             "Pragma: kagami-port=" + Status.MyPort + "\r\n" +
+#if DEBUG
+                             "Pragna: kagami-link=5\r\n"+
+#endif
+                             "Content-Type: application/x-mms-framed\r\n\r\n";
+
+                }
+ 
                 byte[] reqBytes = enc.GetBytes(reqMsg);
 
                 //リクエスト送信
@@ -453,6 +921,7 @@ namespace Kagamin2
                 byte[] ack_end ={ 0x0a, 0x0a }; // '\n', '\n'
                 byte[] ack_log = new byte[50000];
                 byte[] sts_code = new byte[3];
+                byte[] icy_code = new byte[3];
                 int i = 0;
                 int count = 0;
                 while (Status.RunStatus)
@@ -479,15 +948,31 @@ namespace Kagamin2
                         sts_code[0] = ack_log[9];
                         sts_code[1] = ack_log[10];
                         sts_code[2] = ack_log[11];
+
+                        icy_code[0] = ack_log[0];
+                        icy_code[1] = ack_log[1];
+                        icy_code[2] = ack_log[2];
+                        if (System.Text.Encoding.ASCII.GetString(icy_code) == "ICY")
+                        {
+                            Front.AddLogData(0, Status, "ShoutCastストリームです。");
+                            Status.ImportErrorContext = "ShoutCastストリームは対応していません。";
+                            throw new KagamiException("ヘッダの取得中にエラーが発生しました(ICYプロトコル応答)");
+                            Status.ShoutCast = true;
+                            sock.Close();
+                            return;
+                        }
                         try
                         {
                             Front.AddLogDetail("RecvRspMsg(Head)Sta-----\r\n" +
                                          System.Text.Encoding.ASCII.GetString(ack_log, 0, count) +
                                          "\r\nRecvRspMsg(Head)End-----");
+                            //Shoutcastソース
+
                             http_status = int.Parse(System.Text.Encoding.ASCII.GetString(sts_code));
                         }
                         catch
                         {
+
                             //HTTP StatusCode変換失敗
                             Status.ImportErrorContext = "ヘッダ取得エラー(HTTP応答ヘッダ異常)";
                             throw new KagamiException("ヘッダの取得中にエラーが発生しました(HTTP応答ヘッダ異常)");
@@ -496,7 +981,7 @@ namespace Kagamin2
                         {
                             break;
                         }
-                        else if (http_status == 301 || http_status == 302)
+                        else if ((http_status == 301 || http_status == 302) && Front.Opt.ImportRedirect)
                         {
                             // リダイレクト指示の場合は移動先をImportURLに再設定してからNG処理
                             string _reply = System.Text.Encoding.ASCII.GetString(ack_log, 0, count);
@@ -515,14 +1000,30 @@ namespace Kagamin2
                                     throw new KagamiException("リダイレクトします[URL= " + _orgURL + " -> URL=" + _redirURL + "]");
                                 }
                             }
+
+                        }
+                        if (http_status == 301 || http_status == 302)
+                        {
+                            Status.ImportErrorContext = "リダイレクト応答を受信しました（リダイレクト不許可）[HTTPStatusCode=" + http_status + "]";
+                            throw new KagamiException("リダイレクト応答を受信しました（リダイレクト不許可）[HTTPStatusCode=" + http_status + "]");
+                        }
+                        if (http_status == 401)
+                        {
+                            if (AuthFlag)
+                                AuthCancel = true;
+                            else
+                                AuthFlag = true;
+                            Status.ImportErrorContext = "認証を要求されました [HTTPStatusCode=" + http_status + "]";
+                            throw new KagamiException("認証を要求されました [HTTPStatusCode=" + http_status + "]");
                         }
                         Status.ImportErrorContext = "インポートソースはビジーです。[HTTPStatusCode=" + http_status + "]";
                         throw new KagamiException("インポートソースはビジーです。[HTTPStatusCode=" + http_status + "]");
+
                     }
                     else if (count >= 50000)
                     {
                         Front.AddLogDetail("RecvRspMsg(Head)Sta-----\r\n" +
-                                     System.Text.Encoding.ASCII.GetString(ack_log,0,count) +
+                                     System.Text.Encoding.ASCII.GetString(ack_log, 0, count) +
                                      "\r\nRecvRspMsg(Head)End-----");
                         Status.ImportErrorContext = "HTTPヘッダ取得エラー(HTTPHeader>50KBover)";
                         throw new KagamiException("HTTPヘッダの取得中にエラーが発生しました(HTTPHeader>50KBover)");
@@ -556,6 +1057,17 @@ namespace Kagamin2
                     string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("Keep-Alive:")) + 2);
                     str = bfr + aft;
                 }
+                /*
+                // Conn-info設定
+                
+                if (str.IndexOf("Pragma: coninfo=") >= 0)
+                {
+                    // インポート先からの応答にconinfoヘッダがあれば、削除する
+                    string bfr = str.Substring(0, str.IndexOf("Pragma: coninfo="));
+                    string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("Pragma: coninfo=")) + 2);
+                    str = bfr + aft;
+                }
+                */
                 // Connection設定
                 if (str.IndexOf("Connection:") >= 0)
                 {
@@ -569,6 +1081,17 @@ namespace Kagamin2
                     // Connectionヘッダが無ければ追加する
                     str = str.Replace("\r\n\r\n", "\r\nConnection: close\r\n\r\n");
                 }
+                /*
+                if (str.IndexOf("Content-Type:") >= 0)
+                {
+                    string tempa = str.Substring(str.IndexOf("Content-Type:"), str.IndexOf("\r\n", str.IndexOf("Content-Type:")) - str.IndexOf("Content-Type:"));
+                    string bfr = str.Substring(0, str.IndexOf("Content-Type:"));
+                    string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("Content-Type:")) + 2);
+                    aft = aft.Remove(aft.Length - 2);
+                    str = bfr + aft;
+                    str += tempa + "\r\n\n\n";
+                }
+                */
                 /*
                 if (str.IndexOf("Content-Length:") >= 0)
                 {
@@ -752,7 +1275,8 @@ namespace Kagamin2
                 //先頭がASF_HEADER_OBJECTになっているかチェック
                 key = "";
                 for (int guid = 0; guid < 16; guid++)
-                    key += block[pos + guid].ToString("X2");
+                    key = Front.AppendStringBuilder(key, block[pos + guid].ToString("X2"));
+                    //key += block[pos + guid].ToString("X2");
 
                 if (Front.ASF_GUID.ContainsKey(key) && Front.ASF_GUID[key].Equals("ASF_Header_Object"))
                 {
@@ -768,18 +1292,20 @@ namespace Kagamin2
                         + (block[pos + 0x18 + 1] << 8)
                         + (block[pos + 0x18]);
                     pos += 0x1e;
-                    Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "ASF_Header_Object CHECK OK / NumOfObj=" + num);
+
+                   //Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "ASF_Header_Object CHECK OK / NumOfObj=" + num);
 
                     //HeaderObjectLoop
                     for (obj = 0; obj < num; obj++)
                     {
                         key = "";
                         for (int guid = 0; guid < 16; guid++)
-                            key += block[pos + guid].ToString("X2");
+                            key = Front.AppendStringBuilder(key, block[pos + guid].ToString("X2"));
+                            //key += block[pos + guid].ToString("X2");
 
                         if (Front.ASF_GUID.ContainsKey(key))
                         {
-                            Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "OBJID:[" + (obj + 1) + "]" + Front.ASF_GUID[key]);
+                            //Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "OBJID:[" + (obj + 1) + "]" + Front.ASF_GUID[key]);
                             if (Front.ASF_GUID[key].Equals("ASF_Header_Extension_Object"))
                             {
                                 #region ASF_Header_Extension_Object
@@ -805,11 +1331,12 @@ namespace Kagamin2
                                 {
                                     key = "";
                                     for (int guid = 0; guid < 16; guid++)
-                                        key += block[pos + guid].ToString("X2");
+                                        key = Front.AppendStringBuilder(key, block[pos + guid].ToString("X2"));
+                                        //key += block[pos + guid].ToString("X2");
 
                                     if (Front.ASF_GUID.ContainsKey(key))
                                     {
-                                        Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "EX-OBJID:" + Front.ASF_GUID[key]);
+                                        //Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "EX-OBJID:" + Front.ASF_GUID[key]);
 
                                         if (Front.ASF_GUID[key].Equals("ASF_Extended_Stream_Properties_Object"))
                                         {
@@ -842,14 +1369,14 @@ namespace Kagamin2
                                             ex_max /= 1000;
                                             int strnum = (block[pos + 0x48 + 1] << 8)
                                                        + (block[pos + 0x48]);
-                                            Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "STREAM-NUM=" + strnum + " / EX-BITRATE=" + ex_max + "kbps");
+                                            //Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "STREAM-NUM=" + strnum + " / EX-BITRATE=" + ex_max + "kbps");
 #endif
                                             #endregion
                                         }
                                     }
                                     else
                                     {
-                                        Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "EX-OBJID:" + key);
+                                        //Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "EX-OBJID:" + key);
                                     }
                                     // StandardStructure
                                     // 0x10 : HeaderExtension GUID
@@ -894,7 +1421,7 @@ namespace Kagamin2
                                     + (block[pos + 0x64 + 1] << 8)
                                     + (block[pos + 100]);
                                 max /= 1000;
-                                Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "BITRATE=" + max + "kbps");
+                                //Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "BITRATE=" + max + "kbps");
                                 #endregion
                             }
                             // 受信ヘッダのマルチビットレート判定
@@ -907,14 +1434,14 @@ namespace Kagamin2
                                  * 0x08 : OBJ-SIZE
                                  */
                                 Status.StreamSwitchCount = (block[pos + 25] << 8) + block[pos + 24];
-                                Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "BitrateRecordsCount=" + Status.StreamSwitchCount);
+                                //Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "BitrateRecordsCount=" + Status.StreamSwitchCount);
                                 Status.StreamType = new int[Status.StreamSwitchCount];
                                 Status.StreamBitrate = new int[Status.StreamSwitchCount];
                                 for (int _loop = 0; _loop < Status.StreamSwitchCount; _loop++)
                                 {
                                     int tmp_no = (block[pos + 27 + _loop * 6] << 8) + block[pos + 26 + _loop * 6];
                                     int tmp_br = (block[pos + 31 + _loop * 6] << 24) + (block[pos + 30 + _loop * 6] << 16) + (block[pos + 29 + _loop * 6] << 8) + block[pos + 28 + _loop * 6];
-                                    Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "Record=" + tmp_no + "/" + "Rate=" + tmp_br + "(kbps)");
+                                    //Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "Record=" + tmp_no + "/" + "Rate=" + tmp_br + "(kbps)");
                                     if ((0 == tmp_no) || (tmp_no > Status.StreamSwitchCount))
                                         continue;
                                     Status.StreamType[tmp_no - 1] = 0; // Audio
@@ -942,28 +1469,96 @@ namespace Kagamin2
                                 int str_num = block[pos + 0x48];
                                 key = "";
                                 for (int guid = 0; guid < 16; guid++)
-                                    key += block[pos + 0x18 + guid].ToString("X2");
+                                    key = Front.AppendStringBuilder(key, block[pos + 0x18 + guid].ToString("X2"));
+                                    //key += block[pos + 0x18 + guid].ToString("X2");
                                 if (Front.ASF_GUID.ContainsKey(key))
                                 {
-                                    Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "STREAM-NUM=" + str_num + " / STREAM-TYPE=" + Front.ASF_GUID[key]);
+                                    //Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "STREAM-NUM=" + str_num + " / STREAM-TYPE=" + Front.ASF_GUID[key]);
                                     if (Front.ASF_GUID[key] == "ASF_Audio_Media")
                                         stream_prop += str_num.ToString() + "=0,";
-                                    else if (Front.ASF_GUID[key] == "ASF_Video_Media")
-                                        stream_prop += str_num.ToString() + "=1,";
                                     else
-                                        stream_prop += str_num.ToString() + "=2,";
+                                    {
+
+                                        #region ASF_Video_Media
+                                        /*
+                                        * ASF Stream Properties Object
+                                        * 0x04 : Encoded Image Width
+                                        * 0x04 : Encoded Image Height
+                                        * 0x00 : Reserved Flags
+                                        * 0x02 : Format Data Size
+                                        * vari : Format Data
+                                        */
+
+                                        Status.MediaWidth = (block[pos + 0x4E + 3] << 24)
+                                                + (block[pos + 0x4E + 2] << 16)
+                                                + (block[pos + 0x4E + 1] << 8)
+                                                + (block[pos + 0x4E]);
+                                        Status.MediaHeight = (block[pos + 0x4E + 0x04 + 3] << 24)
+                                                + (block[pos + 0x4E + 0x04 + 2] << 16)
+                                                + (block[pos + 0x4E + 0x04 + 1] << 8)
+                                                + (block[pos + 0x4E + 0x04]);
+                                        #endregion
+
+
+                                        if (Front.ASF_GUID[key] == "ASF_Video_Media")
+                                            stream_prop += str_num.ToString() + "=1,";
+                                        else
+                                            stream_prop += str_num.ToString() + "=2,";
+                                    }
                                 }
                                 else
                                 {
-                                    Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "STREAM-NUM=" + str_num + " / STREAM-TYPE=" + key);
+                                    //Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "STREAM-NUM=" + str_num + " / STREAM-TYPE=" + key);
                                     stream_prop += str_num.ToString() + "=2,";
                                 }
                                 #endregion
                             }
+                            else if (Front.ASF_GUID[key].Equals("ASF_Content_Description_Object"))
+                            {
+                                #region ASF_Stream_Properties_Object
+                                /*
+                                 * ASF Stream Properties Object
+                                 * 0x10 : OBJ-ID
+                                 * 0x08 : OBJ-SIZE
+                                 * 0x02 0x18: Title Length
+                                 * 0x02 0x1A: Author Length
+                                 * 0x02 0x1C: Copy Length
+                                 * 0x02 0x1E: Description Length
+                                 * 0x02 0x20: Rating Length
+                                 * vari : Title
+                                 * vari : Author
+                                 * vari : Copyright
+                                 * vari : Description
+                                 * vari : Rating 
+                                */
+                                #endregion
+
+                                Encoding enc = Encoding.Unicode;
+                                int _titleLen = (block[pos + 0x18 + 1] << 8)
+                                            + (block[pos + 0x18]);
+
+                                int _authorLen = (block[pos + 0x1A + 1] << 8)
+                                            + (block[pos + 0x1A]);
+
+                                int _copyrightLen = (block[pos + 0x1C + 1] << 8)
+                                            + (block[pos + 0x1C]);
+
+                                int _desLen = (block[pos + 0x1E + 1] << 8)
+                                            + (block[pos + 0x1E]);
+
+                                int _rateLen = (block[pos + 0x20 + 1] << 8)
+                                    + (block[pos + 0x20]);
+
+                                Status.ASFTitle = (enc.GetString(block, pos + 0x22, _titleLen)).Replace("\0", "");
+                                Status.ASFAuthor = enc.GetString(block, pos + 0x22 + _titleLen, _authorLen).Replace("\0", "");
+                                Status.ASFCopyRight = enc.GetString(block, pos + 0x22 + _titleLen + _authorLen, _copyrightLen).Replace("\0", "");
+                                Status.ASFDescription = enc.GetString(block, pos + 0x22 + _titleLen + _authorLen + _copyrightLen, _desLen).Replace("\0", "");
+                                Status.ASFRating = enc.GetString(block, pos + 0x22 + _titleLen + _authorLen + _copyrightLen + _desLen, _rateLen).Replace("\0", "");
+                            }
                         }
                         else
                         {
-                            Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "OBJID:" + key);
+                            //Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "OBJID:" + key);
                         }
                         pos += (block[pos + 16 + 3] << 24) + (block[pos + 16 + 2] << 16) + (block[pos + 16 + 1] << 8) + block[pos + 16];
                     }
@@ -983,23 +1578,32 @@ namespace Kagamin2
                     int max_audio = 0;
                     int max_video = 0;
                     // 受信するストリームの決定及び最大ビットレートの計算
-                    for (int cnt = 1; cnt <= Status.StreamSwitchCount; cnt++)
+                    if (Status.SelectMulti)
                     {
-                        // 音声ストリームの中でビットレートが最大のものを選択
-                        if ((Status.StreamType[cnt - 1] == 0) && (Status.StreamBitrate[cnt - 1] > max_audio))
+
+                        max_audio = Status.StreamBitrate[Status.SelectedAudioRecord - 1];
+                        max_video = Status.StreamBitrate[Status.SelectedVideoRecord - 1];
+                    }
+                    else
+                    {
+                        for (int cnt = 1; cnt <= Status.StreamSwitchCount; cnt++)
                         {
-                            Status.SelectedAudioRecord = cnt;
-                            max_audio = Status.StreamBitrate[cnt - 1];
-                        }
-                        // 映像ストリームの中でビットレートが最大のものを選択
-                        if ((Status.StreamType[cnt - 1] == 1) && (Status.StreamBitrate[cnt - 1] > max_video))
-                        {
-                            Status.SelectedVideoRecord = cnt;
-                            max_video = Status.StreamBitrate[cnt - 1];
+                            // 音声ストリームの中でビットレートが最大のものを選択
+                            if ((Status.StreamType[cnt - 1] == 0) && (Status.StreamBitrate[cnt - 1] > max_audio))
+                            {
+                                Status.SelectedAudioRecord = cnt;
+                                max_audio = Status.StreamBitrate[cnt - 1];
+                            }
+                            // 映像ストリームの中でビットレートが最大のものを選択
+                            if ((Status.StreamType[cnt - 1] == 1) && (Status.StreamBitrate[cnt - 1] > max_video))
+                            {
+                                Status.SelectedVideoRecord = cnt;
+                                max_video = Status.StreamBitrate[cnt - 1];
+                            }
                         }
                     }
-                    Front.AddLogDebug("MAXIMUM BITRATE", "AUDIO: STREAM-NUM=" + Status.SelectedAudioRecord + "/" + max_audio + "bps");
-                    Front.AddLogDebug("MAXIMUM BITRATE", "VIDEO: STREAM-NUM=" + Status.SelectedVideoRecord + "/" + max_video + "bps");
+                    //Front.AddLogDebug("MAXIMUM BITRATE", "AUDIO: STREAM-NUM=" + Status.SelectedAudioRecord + "/" + max_audio + "bps");
+                    //Front.AddLogDebug("MAXIMUM BITRATE", "VIDEO: STREAM-NUM=" + Status.SelectedVideoRecord + "/" + max_video + "bps");
                     max = max_audio + max_video;
                     /*
                     if (ex_max > 0)
@@ -1007,13 +1611,19 @@ namespace Kagamin2
                     else
                     */
                     if (max > 0)
+                    {
+                        Status.MaxAudioBitRate = max_audio / 1000;
+                        Status.MaxVideoBitRate = max_video / 1000;
+                        Status.NowBitRateVideo = max_video / 1000;
+                        Status.NowBitRateAudio = max_audio / 1000;
                         Status.MaxDLSpeed = max / 1000;       // Extended_Stream_Propertiesから取得できなかった場合、File_Propertiesから設定
+                    }
                     else
                         Front.AddLogData(1, Status, "ビットレート取得NG");
                 }
                 else
                 {
-                    Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "ASF_Header_Object CHECK NG");
+                    //Front.AddLogDebug("WMVHeader[" + Status.MyPort + "]", "ASF_Header_Object CHECK NG");
                     Front.AddLogData(1, Status, "ビットレート取得NG");
                 }
             }
@@ -1066,8 +1676,9 @@ namespace Kagamin2
                     "Pragma: LinkBW=2147483647, AccelBW=2147483647, AccelDuration=18000\r\n" +
                     // ↓回線速度を手動設定したときは、このようになる(256kbps指定時)
                     //"Pragma: LinkBW=240000\r\n" +
-#if !DEBUG
                     "Pragma: kagami-port=" + Status.MyPort + "\r\n" +
+#if DEBUG
+                    "Pragma: kagami-link=5\r\n" +
 #endif
                     "Accept-Language: ja, *;q=0.1\r\n" +
                     "Supported: com.microsoft.wm.srvppair, com.microsoft.wm.sswitch, com.microsoft.wm.predstrm, com.microsoft.wm.startupprofile\r\n" +
@@ -1076,13 +1687,29 @@ namespace Kagamin2
                     // stream-switch-entryの記述方法は下記参照
                     "Pragma: stream-switch-entry=";
 
+                string debug = "";
                 for (int cnt = 1; cnt <= Status.StreamSwitchCount; cnt++)
                 {
+                    debug += "ffff:" + cnt;
                     reqMsg += "ffff:" + cnt;
                     if (cnt == Status.SelectedAudioRecord || cnt == Status.SelectedVideoRecord)
+                    {
+                        debug += ":0";
                         reqMsg += ":0 ";
+                    }
                     else
+                    {
+                        debug += ":2";
                         reqMsg += ":2 ";
+                    }
+                }
+#if DEBUG
+                //Front.AddLogData(1, Status, debug);
+#endif
+                if (AuthFlag)
+                {
+                    string _auth = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes(Status.ImportAuthID + ":" + Status.ImportAuthPass));
+                    reqMsg += "\r\nAuthorization: Basic " + _auth;
                 }
                 reqMsg += "\r\n\r\n";
                 // memo:stream-switch-entry設定方法
@@ -1153,9 +1780,19 @@ namespace Kagamin2
                         {
                             break;
                         }
+                        else if (http_status == 401)
+                        {
+                            if (AuthFlag)
+                                AuthCancel = true;
+                            else
+                                AuthFlag = true;
+                            Status.ImportErrorContext = "認証を要求されました [HTTPStatusCode=" + http_status + "]";
+                            throw new KagamiException("認証を要求されました [HTTPStatusCode=" + http_status + "]");
+
+                        }
                         else
                         {
-                            Status.ImportErrorContext = "インポートソースビジー[" +http_status + "]";
+                            Status.ImportErrorContext = "インポートソースビジー[" + http_status + "]";
                             throw new KagamiException("インポートソースはビジーです。[HTTPStatusCode=" + http_status + "]");
                         }
                     }
@@ -1196,6 +1833,16 @@ namespace Kagamin2
                     string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("Keep-Alive:")) + 2);
                     str = bfr + aft;
                 }
+                /*
+                // Conn-info設定
+                if (str.IndexOf("Pragma: coninfo=") >= 0)
+                {
+                    // インポート先からの応答にconinfoヘッダがあれば、削除する
+                    string bfr = str.Substring(0, str.IndexOf("Pragma: coninfo="));
+                    string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("Pragma: coninfo=")) + 2);
+                    str = bfr + aft;
+                }
+                 */
                 // Connection設定
                 if (str.IndexOf("Connection:") >= 0)
                 {
@@ -1209,6 +1856,17 @@ namespace Kagamin2
                     // Connectionヘッダが無ければ追加する
                     str = str.Replace("\r\n\r\n", "\r\nConnection: close\r\n\r\n");
                 }
+
+                /*
+                if (str.IndexOf("Content-Type:") >= 0)
+                {
+                    string tempa = str.Substring(str.IndexOf("Content-Type:"), str.IndexOf("\r\n", str.IndexOf("Content-Type:")) - str.IndexOf("Content-Type:"));
+                    string bfr = str.Substring(0, str.IndexOf("Content-Type:"));
+                    string aft = str.Substring(str.IndexOf("\r\n", str.IndexOf("Content-Type:")) + 2);
+                    aft = aft.Remove(aft.Length - 2);
+                    str = bfr + aft;
+                    str += tempa + "\r\n\n\n";
+                }*/
                 /*
                 if (str.IndexOf("Content-Length:") >= 0)
                 {
@@ -1329,7 +1987,7 @@ namespace Kagamin2
                                     // DATAブロックを受信したらImportStatus正常に遷移
                                     if (Status.ImportStatus == false)
                                     {
-                                        Status.ImportStartTime = DateTime.Now;
+                                        //Status.ImportStartTime = DateTime.Now;
                                         Status.ClientTime = DateTime.Now;
                                         Status.ImportStatus = true;
                                         Status.RetryCounter = 0;
@@ -1456,6 +2114,8 @@ namespace Kagamin2
                                 break;  //Timeout
                         }
                     }
+                    if (Status.tempMulti)
+                        break;
                 }
                 // whileループ抜け
                 // 終了理由の判定を行う
@@ -1468,6 +2128,12 @@ namespace Kagamin2
                     // ユーザ指示による切断では切断音を鳴らさない
                     //if (File.Exists(Front.Opt.SndDiscFile))
                     //    PlaySound(Front.Opt.SndDiscFile);
+                }
+                else if (Status.tempMulti)
+                {
+                    Front.AddLogData(1, Status, "インポート接続の切断要求を受信しました(Multi切替)");
+                    Status.ImportErrorContext = "ChangeMultiBitRate";
+                    //throw new KagamiException("マルチビットレート切り替え");
                 }
                 else
                 {
@@ -1570,7 +2236,7 @@ namespace Kagamin2
                             // ビジーメッセージ送信
                             string str = _enc.GetString(reqBytes, 0, j);
                             Front.AddLogDetail("RecvReqMsg(Push)Sta-----\r\n" + str + "\r\nRecvReqMsg(Push)End-----");
-                            Front.AddLogDetail("SendRspMsg(Push)Sta-----\r\n" + Front.BusyString + "\r\nSendRspMsg(Push)End-----"); 
+                            Front.AddLogDetail("SendRspMsg(Push)Sta-----\r\n" + Front.BusyString + "\r\nSendRspMsg(Push)End-----");
                             _sock.Send(_enc.GetBytes(Front.BusyString));
                         }
                         else

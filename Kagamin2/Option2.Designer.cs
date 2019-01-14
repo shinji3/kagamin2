@@ -266,11 +266,6 @@
             0,
             0,
             0});
-            this.optResv.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
             this.optResv.Name = "optResv";
             this.optResv.Size = new System.Drawing.Size(42, 19);
             this.optResv.TabIndex = 11;

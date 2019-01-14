@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -28,11 +28,11 @@ namespace Kagamin2
             Event = _event;
             Port = _port;
             Data = _data;
-            
-            // ƒEƒCƒ“ƒhƒEƒ^ƒCƒgƒ‹
-            this.Text = Event + " - Ú×İ’è";
 
-            // ƒfƒtƒHƒ‹ƒg’lİ’è
+            // ã‚¦ã‚¤ãƒ³ãƒ‰ã‚¦ã‚¿ã‚¤ãƒˆãƒ«
+            this.Text = Event + " - è©³ç´°è¨­å®š";
+
+            // ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆå€¤è¨­å®š
             this.radioTime.Checked = true;
             this.optWeek.SelectedIndex = 0;
             this.optHour.Value = this.optHour.Minimum;
@@ -43,11 +43,11 @@ namespace Kagamin2
             this.optConn.Value = Front.Gui.Conn;
             this.optResv.Value = Front.Gui.Reserve;
 
-            //ƒgƒ‰ƒtƒBƒbƒNw’è‚Íñ’÷‚ß
+            //ãƒˆãƒ©ãƒ•ã‚£ãƒƒã‚¯æŒ‡å®šã¯é¦–ç· ã‚
             //radioTraffic.Enabled = false;
 
-            //dataŒ`®
-            //[‹N“®ğŒ],[—j“ú],[],[•ª],[”äŠrŒ³“]‘——Ê],[“]‘——Ê’l],[“]‘——Ê’PˆÊ],[’Êí˜g],[ƒŠƒU˜g]
+            //dataå½¢å¼
+            //[èµ·å‹•æ¡ä»¶],[æ›œæ—¥],[æ™‚],[åˆ†],[æ¯”è¼ƒå…ƒè»¢é€é‡],[è»¢é€é‡å€¤],[è»¢é€é‡å˜ä½],[é€šå¸¸æ ],[ãƒªã‚¶æ ]
             string[] _str = _data.Split(',');
             if (_str.Length == 9)
             {
@@ -82,26 +82,26 @@ namespace Kagamin2
                 catch { }
             }
 
-            // ƒ`ƒFƒbƒNó‘ÔXV
+            // ãƒã‚§ãƒƒã‚¯çŠ¶æ…‹æ›´æ–°
             radioTime_CheckedChanged(null, EventArgs.Empty);
 
-            // ƒCƒxƒ“ƒgí•Ê‚É‚æ‚Á‚ÄÚ‘±˜gİ’è‚Ì—LŒø/–³Œø‚ğØ‚è‘Ö‚¦‚é
+            // ã‚¤ãƒ™ãƒ³ãƒˆç¨®åˆ¥ã«ã‚ˆã£ã¦æ¥ç¶šæ è¨­å®šã®æœ‰åŠ¹/ç„¡åŠ¹ã‚’åˆ‡ã‚Šæ›¿ãˆã‚‹
             switch (Event)
             {
-                case "ƒ|[ƒg‘ÒóŠJn":
-                case "Ú‘±˜g”•ÏX":
-                    //Ú‘±˜gİ’è—LŒø
+                case "ãƒãƒ¼ãƒˆå¾…å—é–‹å§‹":
+                case "æ¥ç¶šæ æ•°å¤‰æ›´":
+                    //æ¥ç¶šæ è¨­å®šæœ‰åŠ¹
                     grpConn.Enabled = true;
                     break;
                 default:
-                    //‚»‚Ì‘¼‚ÍÚ‘±˜gİ’è–³Œø
+                    //ãã®ä»–ã¯æ¥ç¶šæ è¨­å®šç„¡åŠ¹
                     grpConn.Enabled = false;
                     break;
             }
         }
 
         /// <summary>
-        /// Œ‹‰Êæ“¾
+        /// çµæœå–å¾—
         /// </summary>
         /// <returns></returns>
         public string GetResult()
@@ -110,13 +110,13 @@ namespace Kagamin2
         }
 
         /// <summary>
-        /// OKƒ{ƒ^ƒ“‚ğ‰Ÿ‚µ‚½‚Æ‚«
+        /// OKãƒœã‚¿ãƒ³ã‚’æŠ¼ã—ãŸã¨ã
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void okBTN_Click(object sender, EventArgs e)
         {
-            // Data‚É‘Ş”ğ‚µ‚ÄI—¹
+            // Dataã«é€€é¿ã—ã¦çµ‚äº†
             if (this.radioTime.Checked)
                 Data = "0,";
             else
@@ -132,20 +132,20 @@ namespace Kagamin2
         }
 
         /// <summary>
-        /// ƒLƒƒƒ“ƒZƒ‹ƒ{ƒ^ƒ“‚ğ‰Ÿ‚µ‚½‚Æ‚«
+        /// ã‚­ãƒ£ãƒ³ã‚»ãƒ«ãƒœã‚¿ãƒ³ã‚’æŠ¼ã—ãŸã¨ã
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void cancelBTN_Click(object sender, EventArgs e)
         {
-            // ‚Æ‚­‚É‚È‚É‚à‚È‚µ
+            // ã¨ãã«ãªã«ã‚‚ãªã—
         }
 
         private void radioTime_CheckedChanged(object sender, EventArgs e)
         {
             if (radioTime.Checked)
             {
-                // ŠÔw’è‚ª—LŒø‚È‚Æ‚«
+                // æ™‚é–“æŒ‡å®šãŒæœ‰åŠ¹ãªã¨ã
                 this.optWeek.Enabled = true;
                 this.optHour.Enabled = true;
                 this.optMin.Enabled = true;
@@ -155,7 +155,7 @@ namespace Kagamin2
             }
             else
             {
-                // “]‘——Êw’è‚ª—LŒø‚È‚Æ‚«
+                // è»¢é€é‡æŒ‡å®šãŒæœ‰åŠ¹ãªã¨ã
                 this.optWeek.Enabled = false;
                 this.optHour.Enabled = false;
                 this.optMin.Enabled = false;

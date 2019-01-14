@@ -1,4 +1,3 @@
-//#define PLUS
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -6,12 +5,12 @@ using System.Data;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
-
+using System.Collections; 
 using System.IO;
 using System.Threading;
 using System.Xml.Serialization;
 using System.Diagnostics;
-
+using System.Text.RegularExpressions;
 namespace Kagamin2
 {
     public partial class Form1 : Form
@@ -48,6 +47,7 @@ namespace Kagamin2
         /// シャットダウン処理中フラグ
         /// </summary>
         bool ExecShutdown = false;
+
         /// <summary>
         /// 帯域制限スレッド
         /// </summary>
@@ -87,11 +87,17 @@ namespace Kagamin2
         /// 0:kbps 1:KB/s
         /// </summary>
         public uint Unit = 0;
-
         /// <summary>
         /// TaskbarRestartMsgID
         /// </summary>
         private Int32 _uTaskbarRestartMsg = 0;
+        /// <summary>
+        /// 起動中フラグ
+        /// </summary>
+        private bool Starting = true;
+        //ListViewItemSorterに指定するフィールド
+        ListViewItemComparer listViewItemSorter;
+
         #endregion
 
 #if OVERLOAD
@@ -103,98 +109,144 @@ namespace Kagamin2
         {
             try
             {
-                InitializeComponent();
-            }
-            catch
-            {
-                MessageBox.Show("コンポーネントの初期化に失敗しました\r\n環境を確認してください.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Application.Exit();
-            }
-
-            // イベント通知ハンドラの登録
-            Event.UpdateKagami += new EventHandler(Event_UpdateGUI);
-            Event.UpdateClient += new EventHandler(Event_UpdateClient);
-            Event.UpdateReserve += new EventHandler(Event_UpdateReserve);
-            Event.UpdateKick += new EventHandler(Event_UpdateKick);
-            Event.UpdateLog += new EventHandler(Event_UpdateLog);
-
-            Front.AppName = "Kagamin2/1.3.8";
-            this.Text = Front.AppName;
-
-            // StatusBar
-            toolStripCPU.Spring = true;
-
-            // clmClientViewのIndex退避
-            Front.clmCV_ID_IDX = clmClientViewID.DisplayIndex;
-            Front.clmCV_IH_IDX = clmClientViewIpHost.DisplayIndex;
-            Front.clmCV_UA_IDX = clmClientViewUA.DisplayIndex;
-            Front.clmCV_TM_IDX = clmClientViewTime.DisplayIndex;
-            Front.clmCV_IP_IDX = clientView.Columns.Count + 0; // internal-0
-            Front.clmCV_HO_IDX = clientView.Columns.Count + 1; // internal-1
-
-            // monViewに項目設定
-            monViewInit();
-
-            // monAllViewに項目設定
-            monAllViewInit();
-            
-            // StatusBar EX,IM,CPU表示
-            statusBarUpdate();
-
-            // 設定読込前にウインドウサイズを仮設定
-            Front.Form.W = this.Width;
-            Front.Form.H = this.Height;
-
-            // ファイル→Frontに保存値を読み込み
-            Front.LoadSetting();
-
-            if(Front.Opt.AppName != "")
-                Front.AppName += Front.Opt.AppName;
-            Front.UserAgent = "NSPlayer/11.0.5721.5145 " + Front.AppName;
-
-            // Front→GUIに反映
-            LoadSetting();
-
-            // アイコン設定
-            // resファイルから指定できないので実行ファイルから拾うという荒業。。
-            IntPtr[] sIcon = new IntPtr[1];
-            IntPtr[] lIcon = new IntPtr[1];
-            NativeMethods.ExtractIconEx(@"Kagamin2.exe", (int)Front.Form.IconIndex, lIcon, sIcon, 1);
-            if (lIcon[0] != IntPtr.Zero)
-                NativeMethods.DestroyIcon(lIcon[0]);
-            if (sIcon[0] != IntPtr.Zero)
-            {
-                this.Icon = (Icon)Icon.FromHandle(sIcon[0]).Clone();
-                NativeMethods.DestroyIcon(sIcon[0]);
-            }
-
-            // タスクトレイアイコンの設定
-            TaskTrayIcon.Icon = this.Icon;
-            TaskTrayIcon.BalloonTipTitle = Front.AppName;
-            TaskTrayIcon.BalloonTipIcon = ToolTipIcon.Info;
-            TaskTrayIcon.BalloonTipText = "";
-            TaskTrayIcon.Text = Front.AppName;
-            TaskTrayIcon.Visible = false;
-
-            // コマンドライン引数の処理
-            if (argv.Length >= 1)
-            {
-                string url = argv[0];
-                if (url.StartsWith("mms://"))
+                try
                 {
-                    url = url.Replace("mms://", "http://");
+                    InitializeComponent();
                 }
-                else if (url.StartsWith("ttp://"))
+                catch
                 {
-                    url = "h" + url;
+                    MessageBox.Show("コンポーネントの初期化に失敗しました\r\n環境を確認してください.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Application.Exit();
                 }
-                else if (!url.StartsWith("http://"))
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+                listViewItemSorter = new ListViewItemComparer();
+
+                listViewItemSorter.ColumnModes =
+                new ListViewItemComparer.ComparerMode[]
+                             {
+                                ListViewItemComparer.ComparerMode.Integer,
+                                ListViewItemComparer.ComparerMode.String,
+                                ListViewItemComparer.ComparerMode.String,
+                                ListViewItemComparer.ComparerMode.String,
+                                ListViewItemComparer.ComparerMode.DateTime,
+                                ListViewItemComparer.ComparerMode.String
+                             };
+                clientView.ListViewItemSorter = listViewItemSorter;
+                
+                // イベント通知ハンドラの登録
+                Event.UpdateKagami += new EventHandler(Event_UpdateGUI);
+                Event.UpdateClient += new EventHandler(Event_UpdateClient);
+                Event.UpdateReserve += new EventHandler(Event_UpdateReserve);
+                Event.UpdateKick += new EventHandler(Event_UpdateKick);
+                Event.UpdateLog += new EventHandler(Event_UpdateLog);
+
+                Front.AppName = "Kagamin2/1.3.85";
+                this.Text = Front.AppName;
+
+                // StatusBar
+                toolStripAC.Spring = true;
+                ThreadPool.SetMaxThreads(1000, 1000);
+                // clmClientViewのIndex退避
+                Front.clmCV_ID_IDX = clmClientViewID.DisplayIndex;
+                Front.clmCV_IH_IDX = clmClientViewIP.DisplayIndex;
+                Front.clmCV_UA_IDX = clmClientViewUA.DisplayIndex;
+                Front.clmCV_TM_IDX = clmClientViewTime.DisplayIndex;
+                Front.clmCV_IP_IDX = clmClientViewIP.DisplayIndex; // internal-0
+                Front.clmCV_HO_IDX = columnViewHost.DisplayIndex; // internal-1
+                Front.clmCV_BU_IDX = clmClientViewBuffer.DisplayIndex;
+                Front.clmCV_KI_IDX = clmClientViewConnInfo.DisplayIndex;
+                // monViewに項目設定
+                monViewInit();
+
+                // monAllViewに項目設定
+                monAllViewInit();
+
+                // StatusBar EX,IM,CPU表示
+                statusBarUpdate();
+
+                // 設定読込前にウインドウサイズを仮設定
+                Front.Form.W = this.Width;
+                Front.Form.H = this.Height;
+
+                // ファイル→Frontに保存値を読み込み
+                Front.LoadSetting();
+
+                if (Front.Opt.AppName != "")
+                    Front.AppName += " " + Front.Opt.AppName;
+                Front.UserAgent = "NSPlayer/11.0.5721.5145 " + Front.AppName;
+
+                // Front→GUIに反映
+                LoadSetting();
+
+                // アイコン設定
+                // resファイルから指定できないので実行ファイルから拾うという荒業。。
+                IntPtr[] sIcon = new IntPtr[1];
+                IntPtr[] lIcon = new IntPtr[1];
+                NativeMethods.ExtractIconEx(@"Kagamin2.exe", (int)Front.Form.IconIndex, lIcon, sIcon, 1);
+                if (lIcon[0] != IntPtr.Zero)
+                    NativeMethods.DestroyIcon(lIcon[0]);
+                if (sIcon[0] != IntPtr.Zero)
                 {
-                    url = "http://" + url;
+                    this.Icon = (Icon)Icon.FromHandle(sIcon[0]).Clone();
+                    NativeMethods.DestroyIcon(sIcon[0]);
                 }
-                importURL.Text = url;
-                //このタイミングは無理矢理だけどね。。
-                connBTN_Click((object)null, EventArgs.Empty);
+                Front.Acl.TrafficTFHour = new long[1440];
+                // タスクトレイアイコンの設定
+                TaskTrayIcon.Icon = this.Icon;
+                TaskTrayIcon.BalloonTipTitle = Front.AppName;
+                TaskTrayIcon.BalloonTipIcon = ToolTipIcon.Info;
+                TaskTrayIcon.BalloonTipText = "";
+                TaskTrayIcon.Text = Front.AppName;
+                TaskTrayIcon.Visible = false;
+
+                // コマンドライン引数の処理
+                if (argv.Length >= 1)
+                {
+                    string url = argv[0];
+                    if (url.StartsWith("mms://"))
+                    {
+                        url = url.Replace("mms://", "http://");
+                    }
+                    else if (url.StartsWith("ttp://"))
+                    {
+                        url = "h" + url;
+                    }
+                    else if (!url.StartsWith("http://"))
+                    {
+                        url = "http://" + url;
+                    }
+                    importURL.Text = url;
+                    //このタイミングは無理矢理だけどね。。
+                    connBTN_Click((object)null, EventArgs.Empty);
+                }
+                if (Front.Hp.HPstartON)
+                {
+                    toolStripHPStart_Click((object)null, EventArgs.Empty);
+                    if (Front.Hp.PortstartON)
+                    {
+                        connNum.Value = Front.Gui.Conn;
+                        resvNum.Value = Front.Gui.Reserve;
+                        foreach (int _port in Front.Hp.StartPortList)
+                        {
+                            myPort.Text = _port.ToString();
+                            connBTN_Click((object)null, EventArgs.Empty);
+                        }
+                    }
+                }
+                if (!Front.Opt.ViewWMP)
+                {
+                    PreviewWindowsMediaPlayer.Dispose();
+                    tabKagami.TabPages.Remove(tabPage1);
+                }
+                sw.Stop();
+                //MessageBox.Show(sw.ElapsedMilliseconds.ToString());
+
+            }
+            finally
+            {
+                Starting = false;
+                
             }
         }
 
@@ -242,7 +294,7 @@ namespace Kagamin2
                 reserveViewUpdate(_ke);
             }
         }
-        
+
         /// <summary>
         /// クライアントキック通知
         /// </summary>
@@ -304,6 +356,20 @@ namespace Kagamin2
                 }
             }
 
+            // お気に入りリザーブURLを右クリックメニューに反映
+            while (FavReserveMenuItem.DropDownItems.Count > 3)
+                FavReserveMenuItem.DropDownItems.RemoveAt(3);
+            foreach (string s in Front.Gui.ReserveList)
+            {
+                if (s.Length > 0)
+                {
+                    ToolStripMenuItem _tsmi = new ToolStripMenuItem();
+                    _tsmi.Text = s;
+                    _tsmi.Click += PasteReserveURL;
+                    FavReserveMenuItem.DropDownItems.Add(_tsmi);
+                }
+            }
+
             // 帯域制限設定
             if (bndStopLabel.Text == "ポート毎に個別設定" && Front.BandStopTypeString[Front.BndWth.BandStopMode] == "ポート毎に個別設定")
             {
@@ -320,6 +386,30 @@ namespace Kagamin2
 
             // 設定にあわせてStatusBarをAudit
             statusBarAudit();
+
+            Front.BusyString = "HTTP/1.0 503 Service Unavailable\r\n" +
+                                "Server: Rex/10.0.0.3650\r\n" +
+                                "Cache-Control: no-cache\r\n" +
+                                "Pragma: no-cache\r\n" +
+                                "Pragma: client-id=0\r\n" +
+                                "X-Server: " + Front.AppName + "\r\n" +
+                                "Content-Type: text/html\r\n\r\n" +
+                                "<html><head><title>503 Service Unavailable</title></head>\r\n" +
+                                "<body><h1>503 Service Unavailable</h1></body></html>\r\n";
+
+            Front.AuthString_ = "HTTP/1.0 401 Authorization Required\r\n" +
+                                "Server: Rex/10.0.0.3650\r\n" +
+                                "Date: DATE_NOW_REPLACE \r\n" +
+                                "WWW-Authenticate: Basic realm=\"Secret Streaming\"\r\n" +
+                                "Connection: close\r\n" +
+                                "Content-Type: text/html; charset=iso-8859-1\r\n\r\n" +
+                                "<!DOCTYPE HTML PUBLIC \" -//IETF//DTD HTML 2.0//EN\">\r\n" +
+                                "<html><head>\r\n" +
+                                "<title>401 Authorization Required</title>\r\n" +
+                                "</head><body>\r\n" +
+                                "<h1>Authorization Required</h1>\r\n" +
+                                "<p>This server could not verify that you\r\n" +
+                                "are authorized to access the document requested.</p>\r\n";
         }
         /// <summary>
         /// GUI→Frontに設定反映
@@ -360,13 +450,11 @@ namespace Kagamin2
             // スプリッターの位置をリカバリー
             if (Front.Form.SplitDistance1 >= 0) splitContainer1.SplitterDistance = (int)Front.Form.SplitDistance1;
             //if (Front.Form.SplitDistance2 >= 0) splitContainer2.SplitterDistance = (int)Front.Form.SplitDistance2;
-
             // 左パネルのOn/Offをリカバリー
             splitContainer1.Panel1Collapsed = Front.Form.LeftPanelCollapsed;
             // 帯域制限のOn/Offリカバリー
             if (Front.BndWth.EnableBandWidth)
                 StartBandWidth();
-
             // 日間・月間転送量のリカバリー
             // LastUpdateと比較して変化してたらクリアする
             if (Front.Log.LastUpdate != DateTime.Now.ToString("YYYYMMDD"))
@@ -381,10 +469,8 @@ namespace Kagamin2
                     Front.Log.TrsDlMon = 0;
                 }
             }
-
             // ステータスバー状態AUDIT
             statusBarAudit();
-
             // 各ListViewのカラム幅をリカバリー
             #region 各ListViewのカラム幅をリカバリー
             string[] _clm;
@@ -420,14 +506,15 @@ namespace Kagamin2
                 catch { }
             }
             _clm = Front.Form.ClientViewColumn.Split(',');
-            if (_clm.Length == 4)
+            if (_clm.Length == 5)
             {
                 try
                 {
                     clmClientViewID.Width = int.Parse(_clm[0]);
-                    clmClientViewIpHost.Width = int.Parse(_clm[1]);
+                    clmClientViewIP.Width = int.Parse(_clm[1]);
                     clmClientViewUA.Width = int.Parse(_clm[2]);
                     clmClientViewTime.Width = int.Parse(_clm[3]);
+                    clmClientViewTime.Width = int.Parse(_clm[4]);
                 }
                 catch { }
             }
@@ -464,14 +551,10 @@ namespace Kagamin2
             }
             _clm = null;
             #endregion
-
-            // ClientViewRClickのドメイン解決有効切り替え
-            ClientResolveHostMenu.Checked = Front.Opt.EnableResolveHost;
-
             // monViewの帯域速度表示単位
             Unit = Front.Form.monViewUnit;
             monViewUpdate(null);
-            
+
             // ImportURL/最大通常接続数/最大リザーブ接続数を終了時点でのGUI上の値でリカバリー
             importURL.Text = Front.Gui.ImportURL;
             connNum.Value = Front.Gui.Conn;
@@ -482,9 +565,6 @@ namespace Kagamin2
             Time = _dtNow.ToString("HH:mm");
             // 周期更新用タイマー開始
             timer1.Enabled = true;
-#if !PLUS
-            MonModeChgMenu.Visible = false;
-#endif
         }
         /// <summary>
         /// 指定ListViewにダブルバッファリング指示
@@ -527,6 +607,15 @@ namespace Kagamin2
 
             // Webエントランス停止
             Front.WebEntrance.Stop();
+            if (Front.UPnPPort.Count > 0)
+            {
+                foreach (int i in Front.UPnPPort)
+                {
+                    JinkSoft.Utility.UPnP.UPnPClient.CloseFirewallPort(i);
+                }
+
+            }
+            Front.UPnPPort.Clear();
             // 全鏡停止
             Front.AllStop();
             // 帯域制限スレッド停止
@@ -548,7 +637,7 @@ namespace Kagamin2
             Front.Form.KagamiListColumn = "" + clmKgmViewPort.Width + "," + clmKgmViewImport.Width + "," + clmKgmViewConn.Width;
             Front.Form.MonAllViewColumn = "" + clmMonAllView1.Width + "," + clmMonAllView2.Width;
             Front.Form.MonViewColumn = "" + clmMonView1.Width + "," + clmMonView2.Width;
-            Front.Form.ClientViewColumn = "" + clmClientViewID.Width + "," + clmClientViewIpHost.Width + "," + clmClientViewUA.Width + "," + clmClientViewTime.Width;
+            Front.Form.ClientViewColumn = "" + clmClientViewID.Width + "," + clmClientViewIP.Width + "," + clmClientViewUA.Width + "," + clmClientViewTime.Width + "," + clmClientViewTime.Width;
             Front.Form.ResvViewColumn = "" + clmResvViewIP.Width + "," + clmResvViewStatus.Width;
             Front.Form.KickViewColumn = "" + clmKickViewIP.Width + "," + clmKickViewStatus.Width + "," + clmKickViewCount.Width;
             Front.Form.LogViewColumn = "" + clmLogView1.Width + "," + clmLogView2.Width;
@@ -561,6 +650,7 @@ namespace Kagamin2
                 Front.Gui.ImportURL = importURL.Text;
             Front.Gui.Conn = (uint)connNum.Value;
             Front.Gui.Reserve = (uint)resvNum.Value;
+
             // 今回の総転送量を加算
             Front.Log.TrsUpDay += Front.TotalUP;
             Front.Log.TrsDlDay += Front.TotalDL;
@@ -581,11 +671,8 @@ namespace Kagamin2
             //最小化でタスクトレイに格納
             if (this.WindowState == FormWindowState.Minimized)
             {
-                if (Front.Form.EnableTrayIcon)
-                {
-                    this.Visible = false;
-                    this.TaskTrayIcon.Visible = true;
-                }
+                this.Visible = !Front.Opt.InTrayOn;
+                this.TaskTrayIcon.Visible = Front.Opt.InTrayOn;
             }
         }
         /// <summary>
@@ -623,16 +710,20 @@ namespace Kagamin2
         /// <param name="m"></param>
         protected override void WndProc(ref Message m)
         {
-            // タスクトレイのアイコンをセット
-            if (m.Msg == _uTaskbarRestartMsg && _uTaskbarRestartMsg != 0)
+            try
             {
-                if (this.TaskTrayIcon.Visible)
+                // タスクトレイのアイコンをセット
+                if (m.Msg == _uTaskbarRestartMsg && _uTaskbarRestartMsg != 0)
                 {
-                    this.TaskTrayIcon.Visible = false;
-                    this.TaskTrayIcon.Visible = true;
+                    if (this.TaskTrayIcon.Visible)
+                    {
+                        this.TaskTrayIcon.Visible = false;
+                        this.TaskTrayIcon.Visible = true;
+                    }
                 }
+                base.WndProc(ref m);
             }
-            base.WndProc(ref m);
+            catch { }
         }
         #endregion
 
@@ -689,6 +780,8 @@ namespace Kagamin2
             else
             {
                 Front.AddLogDebug("Webエントランス", "エントランスを停止しました");
+                Front.DenyLogin.Clear();
+                Front.FailureLogin.Clear();
                 Front.WebEntrance.Stop();
             }
         }
@@ -763,11 +856,11 @@ namespace Kagamin2
             if (Front.Hp.UseHP)
             {
                 // エントランス起動ボタン
-                toolStripCPU.Spring = false;
-                toolStripCPU.Width = toolStripEXNum.Width;
+                toolStripAC.Spring = false;
+                toolStripAC.Width = toolStripEXNum.Width;
                 toolStripHPStart.Visible = true;
                 toolStripHPPause.Visible = true;
-                toolStripCPU.Spring = true;
+                toolStripAC.Spring = true;
                 if (Front.HPStart)
                     toolStripHPStart.BorderStyle = Border3DStyle.Sunken; // ON
                 else
@@ -781,11 +874,11 @@ namespace Kagamin2
             }
             else
             {
-                toolStripCPU.Spring = false;
-                toolStripCPU.Width = toolStripEXNum.Width;
+                toolStripAC.Spring = false;
+                toolStripAC.Width = toolStripEXNum.Width;
                 toolStripHPStart.Visible = false;
                 toolStripHPPause.Visible = false;
-                toolStripCPU.Spring = true;
+                toolStripAC.Spring = true;
             }
 
             // 自動終了ボタン
@@ -815,7 +908,23 @@ namespace Kagamin2
             }
             toolStripEXNum.Text = "EX " + cnt_ex.ToString();
             toolStripIMNum.Text = "IM " + cnt_im.ToString();
-            toolStripCPU.Text = "CPU " + monAllView.Items[0].SubItems[1].Text;
+            toolStripAC.Text = "CPU " + monAllView.Items[0].SubItems[1].Text;
+            PowerStatus ps = SystemInformation.PowerStatus;
+            toolStripAC.Text = "Power ";
+            //電源に接続されているか
+            switch (ps.PowerLineStatus)
+            {
+                case PowerLineStatus.Online:
+                    toolStripAC.Text+="AC";
+                    break;
+                case PowerLineStatus.Offline:
+                    toolStripAC.Text += (ps.BatteryLifePercent * 100).ToString("F1") + "%";
+                    break;
+                case PowerLineStatus.Unknown:
+                    toolStripAC.Text += "--%";
+                    break;
+            }
+
         }
         /// <summary>
         /// ステータスバー上でのToolTip表示用
@@ -876,13 +985,13 @@ namespace Kagamin2
         {
             showTaskTrayTip();
         }
-
+        DateTime _TrayTime = DateTime.Now;
         /// <summary>
         /// タスクトレイアイコンにBalloonTip表示
         /// </summary>
         private void showTaskTrayTip()
         {
-            if (!Front.Opt.BalloonTip)
+            if (!Front.Opt.BalloonTip || _TrayTime.AddMilliseconds(10000) > DateTime.Now)
                 return;
 
             this.TaskTrayIcon.BalloonTipText = "";
@@ -909,6 +1018,7 @@ namespace Kagamin2
                 sb.Remove(sb.Length - Environment.NewLine.Length, Environment.NewLine.Length);
                 this.TaskTrayIcon.BalloonTipText = sb.ToString();
             }
+            _TrayTime = DateTime.Now;
             this.TaskTrayIcon.ShowBalloonTip(10000);
         }
         #endregion
@@ -960,6 +1070,999 @@ namespace Kagamin2
                     return;
                 }
             }
+        }
+        private void MonView_DoubleClick(object sender, EventArgs e)
+        {
+
+        }
+
+        /// <summary>
+        /// monAllViewに初期アイテムを追加する
+        /// </summary>
+        private void monAllViewInit()
+        {
+            monAllView.Items.Add("全CPU使用率");
+            monAllView.Items.Add("鏡CPU使用率");
+            monAllView.Items.Add("総UP帯域");
+            monAllView.Items.Add("総DL帯域");
+            //monAllView.Items.Add("総UP転送量");
+            //monAllView.Items.Add("総DL転送量");
+            //monAllView.Items.Add("設定転送量");
+            //if (Front.Acl.TrafficHour > 0)
+
+            //else
+            //monAllView.Items.Add("制限転送量");
+            monAllView.Items.Add("UP転送量/日");
+            monAllView.Items.Add("DL転送量/日");
+            monAllView.Items.Add("UP転送量/月");
+            monAllView.Items.Add("DL転送量/月");
+            //monAllView.Items.Add("残り到達時間");
+            //monAllView.Items.Add("24時間累計転送量");
+            //monAllView.Items.Add("新規接続");
+            //monAllView.Items.Add("帯域制限");
+            for (int cnt = 0; cnt < monAllView.Items.Count; cnt++)
+                monAllView.Items[cnt].SubItems.Add("");
+            monAllViewUpdate();
+        }
+        /// <summary>
+        /// 全体モニタの更新
+        /// </summary>
+        private void monAllViewUpdate()
+        {
+            //総up,down転送速度の計算
+            int _up = 0, _down = 0;
+            foreach (Kagami _k in Front.KagamiList)
+            {
+                _up += _k.Status.CurrentDLSpeed * _k.Status.Client.Count;
+                _down += _k.Status.CurrentDLSpeed;
+            }
+
+            //総up,down転送量の計算
+            //ulong _ul_day, _dl_day, _ul_mon, _dl_mon;
+            string _ul_day, _dl_day, _ul_mon, _dl_mon;
+
+            _ul_day = ((ulong)(Front.Log.TrsUpDay + Front.TotalUP)).ToString("#,##0,, [Mbyte]");
+            _dl_day = ((ulong)(Front.Log.TrsDlDay + Front.TotalDL)).ToString("#,##0,, [Mbyte]");
+            _ul_mon = ((ulong)(Front.Log.TrsUpMon + Front.TotalUP)).ToString("#,##0,, [Mbyte]");
+            _dl_mon = ((ulong)(Front.Log.TrsDlMon + Front.TotalDL)).ToString("#,##0,, [Mbyte]");
+
+            int idx = 0;
+            // 全体のCPU使用率
+            try
+            {
+                monAllView.Items[idx].SubItems[1].Text = System.Math.Round(Front.CPU_ALL.NextValue(), 1).ToString("0.0") + "%";
+            }
+            catch
+            {
+                monAllView.Items[idx].SubItems[1].Text = "取得NG";
+            }
+            idx++;
+            // 鏡のCPU使用率
+            try
+            {
+                monAllView.Items[idx].SubItems[1].Text = System.Math.Round(Front.CPU_APP.NextValue(), 1).ToString("0.0") + "%";
+            }
+            catch
+            {
+                monAllView.Items[idx].SubItems[1].Text = "取得NG";
+            }
+            idx++;
+            // 総UP帯域
+            monAllView.Items[idx].SubItems[1].Text = Unit == 0 ? _up.ToString("#,##0") + " [kbps]" : (_up / 8).ToString("#,##0") + " [KB/s]"; idx++;
+            // 総DOWN帯域
+            monAllView.Items[idx].SubItems[1].Text = Unit == 0 ? _down.ToString("#,##0") + " [kbps]" : (_down / 8).ToString("#,##0") + " [KB/s]"; idx++;
+            // 総UP転送量/日
+            monAllView.Items[idx].SubItems[1].Text = _ul_day; idx++;
+            // 総DL転送量/日
+            monAllView.Items[idx].SubItems[1].Text = _dl_day; idx++;
+            // 総UP転送量/月
+            monAllView.Items[idx].SubItems[1].Text = _ul_mon; idx++;
+            // 総DL転送量/月
+            monAllView.Items[idx].SubItems[1].Text = _dl_mon; idx++;
+            /*
+            //総up,down転送速度の計算
+            int _up = 0, _down = 0;
+            foreach (Kagami _k in Front.KagamiList)
+            {
+                _up += _k.Status.CurrentDLSpeed * _k.Status.Client.Count;
+                _down += _k.Status.CurrentDLSpeed;
+            }
+
+            //総up,down転送量の計算
+            string _ul, _dl, _daydl,_setup, _time,_traffic;
+            if (Front.TotalUP > 10 * 1000 * 1000)
+                _ul = Front.TotalUP.ToString("#,##0,,") + " [Mbyte]";
+            else
+                _ul = Front.TotalUP.ToString("#,##0,") + " [kbyte]";
+
+            if (Front.TotalDL > 10 * 1000 * 1000)
+                _dl = Front.TotalDL.ToString("#,##0,,") + " [Mbyte]";
+            else
+                _dl = Front.TotalDL.ToString("#,##0,") + " [kbyte]";
+            //if (Front.Acl.TrafficHour > 0)
+            
+            _traffic = Front.HourUP.ToString("#,##0") + " [Mbyte]";
+            //else
+            //{
+            //    _hour = "無効";
+            //}
+            _daydl = Front.DayUP.ToString("#,##0") + " [Mbyte]";
+            _setup = Front.DayUPSet.ToString("#,##0") + "[Mbyte]";
+
+            if (((Front.Acl.StopMB - Front.DayUP <= 5 && Front.Acl.TrafficHour != 2) ||
+                (Front.Acl.StopMB - Front.HourUP <= 5 && Front.Acl.TrafficHour == 2)) ||
+                Front.Acl.StopFlag == false ||
+                Front.Attainment == true || _up <= 50)
+            {
+                _time = "-時間-分";
+            }
+            else
+            {
+                try
+                {
+                    int _hour;
+                    int _min;
+                    if (!Front.Acl.DLContainFlag)
+                    {
+                        if (Front.Acl.TrafficHour == 2)
+                        {
+                            //残り転送量(KB)/転送帯域(Kbyte/Hour)
+                            _hour = (int)(((Front.Acl.StopMB - Front.HourUP) * 1024) / (double)(((_up) / 8) * 60 * 60));
+                            //Hour*60-残り転送量(KB)/転送帯域(Kbyte/Min)
+                            _min = (int)(((Front.Acl.StopMB - Front.HourUP) * 1024) / (double)(((_up) / 8) * 60) - (_hour * 60) + 0.5);
+
+
+                        }
+                        else
+                        {
+                            //残り転送量(KB)/転送帯域(Kbyte/Hour)
+                            _hour = (int)(((Front.Acl.StopMB - Front.DayUP) * 1024) / (double)(((_up) / 8) * 60 * 60));
+                            //Hour*60-残り転送量(KB)/転送帯域(Kbyte/Min)
+                            _min = (int)(((Front.Acl.StopMB - Front.DayUP) * 1024) / (double)(((_up) / 8) * 60) - (_hour * 60) + 0.5);
+                        }
+                    }
+                    else
+                    {
+                        if (Front.Acl.TrafficHour == 2)
+                        {
+                            //残り転送量(KB)/転送帯域(Kbyte/Hour)
+                            _hour = (int)(((Front.Acl.StopMB - Front.HourUP) * 1024) / (double)(((_up + _down) / 8) * 60 * 60));
+                            //Hour*60-残り転送量(KB)/転送帯域(Kbyte/Min)
+                            _min = (int)(((Front.Acl.StopMB - Front.HourUP) * 1024) / (double)(((_up + _down) / 8) * 60) - (_hour * 60) + 0.5);
+
+
+                        }
+                        else
+                        {
+                            //残り転送量(KB)/転送帯域(Kbyte/Hour)
+                            _hour = (int)(((Front.Acl.StopMB - Front.DayUP) * 1024) / (double)(((_up + _down) / 8) * 60 * 60));
+                            //Hour*60-残り転送量(KB)/転送帯域(Kbyte/Min)
+                            _min = (int)(((Front.Acl.StopMB - Front.DayUP) * 1024) / (double)(((_up + _down) / 8) * 60) - (_hour * 60) + 0.5);
+                        }
+                    }
+
+                    _time = _hour + "時間" + _min + "分";
+                }
+                catch
+                {
+                    _time = "0時間0分";
+                }
+            }
+            int idx = 0;
+
+            // 全体のCPU使用率
+            try
+            {
+                monAllView.Items[idx].SubItems[1].Text = System.Math.Round(Front.CPU_ALL.NextValue(), 1).ToString("0.0") + "%";
+            }
+            catch
+            {
+                monAllView.Items[idx].SubItems[1].Text = "取得NG";
+            }
+            idx++;
+            // 鏡のCPU使用率
+            try
+            {
+                monAllView.Items[idx].SubItems[1].Text = System.Math.Round(Front.CPU_APP.NextValue(), 1).ToString("0.0") + "%";
+            }
+            catch
+            {
+                monAllView.Items[idx].SubItems[1].Text = "取得NG";
+            }
+            idx++;
+            // 総UP帯域
+            monAllView.Items[idx].SubItems[1].Text = Unit == 0 ? _up.ToString("#,##0") + " [kbps]" : (_up / 8).ToString("#,##0") + " [KB/s]"; idx++;
+            // 総DOWN帯域
+            monAllView.Items[idx].SubItems[1].Text = Unit == 0 ? _down.ToString("#,##0") + " [kbps]" : (_down / 8).ToString("#,##0") + " [KB/s]"; idx++;
+            // 総UP転送量/日
+            monAllView.Items[idx].SubItems[1].Text = _ul_day; idx++;
+            // 総DL転送量/日
+            monAllView.Items[idx].SubItems[1].Text = _dl_day; idx++;
+            // 総UP転送量/月
+            monAllView.Items[idx].SubItems[1].Text = _ul_mon; idx++;
+            // 総DL転送量/月
+            monAllView.Items[idx].SubItems[1].Text = _dl_mon; idx++;
+            //残り時間
+            //monAllView.Items[idx].SubItems[1].Text = _time; idx++;
+            //24時間累計転送量
+            //monAllView.Items[idx].SubItems[1].Text = _traffic; idx++;
+
+
+
+            // 接続制限
+            //monAllView.Items[idx].SubItems[1].Text = Front.Pause ? "制限中" : "制限なし"; idx++;
+            // 帯域制限
+            //monAllView.Items[idx].SubItems[1].Text = Front.BndWth.EnableBandWidth ? "開始中" : "停止中"; idx++;
+            // 総UP転送量
+            //monAllView.Items[idx].SubItems[1].Text = _ul; idx++;
+            // 総DOWN転送量
+            //monAllView.Items[idx].SubItems[1].Text = _dl; idx++;
+            //設定転送量
+            //monAllView.Items[idx].SubItems[1].Text = _setup; idx++;
+            //日別転送量
+            //monAllView.Items[idx].SubItems[1].Text = _daydl; idx++;
+            */
+        }
+        /// <summary>
+        /// monAllViewのダブルクリック
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void monAllView_DoubleClick(object sender, EventArgs e)
+        {
+            // kbps⇔KB/s切替
+            if (Unit == 0)
+                Unit = 1;
+            else
+                Unit = 0;
+            // 即更新
+            monAllViewUpdate();
+            monViewUpdate(this.SelectedKagami);
+        }
+        #endregion
+
+        #region 右パネル上部
+        /// <summary>
+        /// インポートURLでキー入力した時
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void importURL_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            // Enter入力なら接続処理を行う
+            if (e.KeyChar == (char)Keys.Enter)
+            {
+                connBTN_Click(sender, EventArgs.Empty);
+                e.Handled = true;
+            }
+        }
+
+        #region ImportURL右クリックメニュー
+        /// <summary>
+        /// お気に入りへ登録メニュー選択時
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void AddFavoriteMenu_Click(object sender, EventArgs e)
+        {
+            // 登録済みチェック
+            if (Front.Gui.FavoriteList.Contains(importURL.Text))
+                return;
+
+            // 右クリックメニューに反映
+            ToolStripMenuItem _tsmi = new ToolStripMenuItem();
+            _tsmi.Text = importURL.Text;
+            _tsmi.Click += PasteFavoriteURL;
+            ImportUrlRClick.Items.Add(_tsmi);
+
+            // 設定ファイルに反映
+            Front.Gui.FavoriteList.Add(importURL.Text);
+            Front.SaveSetting();
+        }
+
+
+
+        /// <summary>
+        /// お気に入りをImportURLへ貼り付け
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void PasteFavoriteURL(object sender, EventArgs e)
+        {
+            ToolStripMenuItem _tsmi = (ToolStripMenuItem)sender;
+            try
+            {
+                if (!Front.IndexOf(int.Parse(myPort.Text)).Status.RunStatus)
+                    importURL.Text = _tsmi.Text;
+            }
+            catch
+            {
+                // 状態チェック失敗
+                importURL.Text = _tsmi.Text;
+            }
+        }
+        /// <summary>
+        /// お気に入りをReserveへ登録
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void PasteReserveURL(object sender, EventArgs e)
+        {
+            ToolStripMenuItem _tsmi = (ToolStripMenuItem)sender;
+            try
+            {
+                if (Front.IndexOf(int.Parse(myPort.Text)) != null)
+                    Front.IndexOf(int.Parse(myPort.Text)).Status.AddReserve(System.Net.Dns.GetHostAddresses(_tsmi.Text)[0].ToString());
+            }
+            catch
+            {
+            }
+        }
+        private void ImportUrlCutMenu_Click(object sender, EventArgs e)
+        {
+            importURL.Cut();
+        }
+
+        private void ImportUrlCopyMenu_Click(object sender, EventArgs e)
+        {
+            importURL.Copy();
+        }
+
+        private void ImportUrlPasteMenu_Click(object sender, EventArgs e)
+        {
+            importURL.Paste();
+        }
+
+        private void ImportUrlEraseMenu_Click(object sender, EventArgs e)
+        {
+            if (importURL.SelectionLength > 0)
+                importURL.Text = importURL.Text.Remove(importURL.SelectionStart, importURL.SelectionLength);
+        }
+        #endregion
+
+        /// <summary>
+        /// 鏡ポート番号欄でキー入力した時
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void myPort_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            // Enter入力なら接続処理を行う
+            if (e.KeyChar == (char)Keys.Enter)
+            {
+                connBTN_Click(sender, EventArgs.Empty);
+                e.Handled = true;
+            }
+        }
+        /// <summary>
+        /// 接続ボタンを押した時
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void connBTN_Click(object sender, EventArgs e)
+        {
+            int _port;
+
+            if (!Front.Hp.UseHP && importURL.Text == "")
+            {
+                MessageBox.Show("インポートURLを入力してください。", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            try { _port = int.Parse(myPort.Text); }
+            catch { MessageBox.Show("ポート番号が異常です。\r\n65535以下の数値を設定してください。", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
+
+            connBTN.Enabled = false;
+            if (Front.IndexOf(_port) == null)
+            {
+                Kagami _k;
+                logView.Items.Clear();
+                if (Starting)
+                {
+                    int conn = (int)connNum.Value;
+                    int res = (int)resvNum.Value;
+                    if (Front.Gui.Conn_NumList.ContainsKey(_port))
+                        conn = Front.Gui.Conn_NumList[_port];
+                    if (Front.Gui.Reserve_NumList.ContainsKey(_port))
+                        res = Front.Gui.Reserve_NumList[_port];
+                    _k = new Kagami(importURL.Text, _port, conn, res);
+                }
+                else
+                {
+
+                    _k = new Kagami(importURL.Text, _port, (int)connNum.Value, (int)resvNum.Value);
+                }
+                // 個別帯域設定の場合、上限帯域を設定しておく
+                if (Front.BndWth.BandStopMode == 2)
+                {
+                    //設定が保存されてる場合、その設定を適応する
+                    if (Front.BndWth.PortBandWidth.ContainsKey(_port))
+                    {
+                        _k.Status.GUILimitUPSpeed = Front.BndWth.PortBandWidth[_port];
+                        _k.Status.LimitUPSpeed = Front.CnvLimit(Front.BndWth.PortBandWidth[_port], (int)Front.BndWth.BandStopUnit);
+                    }
+                    else
+                    {//保存されてない場合初期値
+                        _k.Status.GUILimitUPSpeed = (int)Front.BndWth.BandStopValue;
+                        _k.Status.LimitUPSpeed = Front.CnvLimit((int)Front.BndWth.BandStopValue, (int)Front.BndWth.BandStopUnit);
+                    }
+                }
+                Front.Add(_k);
+            }
+        }
+
+        /// <summary>
+        /// 切断ボタンを押した時
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void discBTN_Click(object sender, EventArgs e)
+        {
+            discBTN.Enabled = false;
+            Kagami _k = this.SelectedKagami;
+            if (_k != null)
+                _k.Status.RunStatus = false;
+        }
+
+        /// <summary>
+        /// 接続・切断ボタン状態オーディット
+        /// </summary>
+        private void ButtonAudit()
+        {
+            Kagami _k = this.SelectedKagami;
+            if (_k == null)
+            {
+                if (connBTN.Enabled == false)
+                {
+                    // ポート未接続でconnボタン無効：切断完了
+                    connBTN.Enabled = true;
+                    discBTN.Enabled = false;
+                    // 待機中/接続中→未接続になったのでGUI表示更新
+                    myPort_StateChanged();
+                }
+                else
+                {
+                    // 未接続状態でconnボタン有効：Idle中
+                }
+                // TitleBar更新
+                this.Text = Front.AppName;
+                ExportAuthMenuItem.Checked = false;
+            }
+            else
+            {
+                if (_k.Status.RunStatus == true)
+                {
+                    if (discBTN.Enabled == false)
+                    {
+                        // ポート接続状態でdiscボタン無効：接続完了
+                        connBTN.Enabled = false;
+                        discBTN.Enabled = true;
+                        // 未接続→待機中になったのでGUI表示更新
+                        myPort_StateChanged();
+                    }
+                    else
+                    {
+                        // ポート接続状態でdiscボタン有効：Running中
+                        if (importURL.Text != _k.Status.ImportURL)
+                            importURL.Text = _k.Status.ImportURL;
+                    }
+                }
+                else
+                {
+                    // ポート接続状態でRunStatus==false：切断処理中
+                }
+                // TitleBar更新
+                this.Text = "EX " + _k.Status.Client.Count + "/" + _k.Status.Connection + "+" + _k.Status.Reserve
+                    + " PORT:" + _k.Status.MyPort + " " + Front.AppName;
+
+                ExportAuthMenuItem.Checked = _k.Status.ExportAuth;
+            }
+
+
+        }
+
+        /// <summary>
+        /// 消去ボタンを押した時
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void clearBTN_Click(object sender, EventArgs e)
+        {
+            if (importURL.Enabled)
+                importURL.Text = "";
+        }
+
+        /// <summary>
+        /// 鏡ボタンを押した時
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void copyMyUrlBTN_Click(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                OptionClick.Show(PointToScreen(new Point(copyMyUrlBTN.Location.X + copyMyUrlBTN.Size.Height / 2, (int)(copyMyUrlBTN.Location.Y + copyMyUrlBTN.Size.Width * 0.8))));
+            }
+        }
+        private void CopyMyIPMenuItem_Click(object sender, EventArgs e)
+        {
+            if (Front.GetGlobalIP())
+            {
+                try
+                {
+                    Clipboard.SetText("http://" + Front.GlobalIP.ToString() + ":" + myPort.Text);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("クリップボードにコピーできませんでした。クリップボードがロックされている可能性があります。\r\n+理由:" + ex.Message + "\r\n" + ex.StackTrace, "コピーエラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void MyDDNSCopyMenuItem_Click(object sender, EventArgs e)
+        {
+            if (Front.Hp.IpHTTP == "")
+            {
+                MessageBox.Show("DDNSが設定されていません。設定の鏡置き場で入力してください。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            else
+            {
+                try
+                {
+                    Clipboard.SetText(Front.Hp.IpHTTP + ":" + myPort.Text);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("クリップボードにコピーできませんでした。クリップボードがロックされている可能性があります。\r\n+理由:" + ex.Message + "\r\n" + ex.StackTrace, "コピーエラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+
+        }
+        private void ExportAuthMenuItem_Click(object sender, EventArgs e)
+        {
+            if (this.SelectedKagami != null)
+            {
+                if (Front.Opt.AuthID == "" || Front.Opt.AuthPass == "")
+                {
+                    MessageBox.Show("IDまたはパスワードが設定されていません。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ExportAuthMenuItem.Checked = false;
+
+                }
+                else
+                {
+                    ExportAuthMenuItem.Checked = !ExportAuthMenuItem.Checked;
+                    this.SelectedKagami.Status.ExportAuth = ExportAuthMenuItem.Checked;
+                }
+            }
+        }
+
+
+
+        /// <summary>
+        /// 設ボタンを押した時
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void optBTN_Click(object sender, EventArgs e)
+        {
+            Option optDlg = new Option();
+            // 設定画面表示
+            optDlg.ShowDialog();
+            // 新設定をロード
+            LoadSetting();
+        }
+
+        /// <summary>
+        /// 自ポート番号を変更した時
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void myPort_TextChanged(object sender, EventArgs e)
+        {
+            myPort_StateChanged();
+        }
+        /// <summary>
+        /// ポート状態変更
+        /// </summary>
+        private void myPort_StateChanged()
+        {
+            ButtonAudit();
+
+            Kagami _k = this.SelectedKagami;
+
+            //右パネル上部の状態を修正
+            if (_k != null)
+            {
+                //起動中ポート
+                importURL.Text = _k.Status.ImportURL;
+                importURL.Enabled = false;
+                connNum.Value = _k.Status.Conn_UserSet;
+                resvNum.Value = _k.Status.Reserve;
+            }
+            else
+            {
+                //未起動ポート
+                if (importURL.Text == "待機中")
+                    importURL.Text = "";
+                importURL.Enabled = true;
+            }
+            //tabKagamiのタブ状態を修正
+            tabKagami_SelectedIndexChanged(null, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// 最大通常接続数を変更
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void connNum_ValueChanged(object sender, EventArgs e)
+        {
+            Kagami _k = this.SelectedKagami;
+            if (_k != null)
+            {
+                _k.Status.Conn_UserSet = (int)connNum.Value;
+                if (Front.BndWth.EnableBandWidth)
+                {
+                    // 帯域制限中は人数減らしは即反映。
+                    // 人数増加は帯域制限タスクでの再計算契機に行う。
+                    if (_k.Status.Connection > connNum.Value)
+                        _k.Status.Connection = (int)connNum.Value;
+                }
+                else
+                {
+                    _k.Status.Connection = (int)connNum.Value;
+                }
+                LeftFlag = true;
+                BandFlag = true;
+            }
+            else
+            {
+                Front.Gui.Conn = (uint)connNum.Value;
+            }
+        }
+        /// <summary>
+        /// 最大通常接続数を変更（キー入力）
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void connNum_KeyUp(object sender, KeyEventArgs e)
+        {
+            connNum_ValueChanged(sender, (EventArgs)e);
+        }
+
+        /// <summary>
+        /// 最大リザーブ接続数を変更
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void resvNum_ValueChanged(object sender, EventArgs e)
+        {
+            Kagami _k = this.SelectedKagami;
+            if (_k != null)
+            {
+                _k.Status.Reserve = (int)resvNum.Value;
+                LeftFlag = true;
+                BandFlag = true;
+            }
+            else
+            {
+                Front.Gui.Reserve = (uint)resvNum.Value;
+            }
+        }
+        /// <summary>
+        /// 最大リザーブ接続数を変更（キー入力）
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void resvNum_KeyUp(object sender, KeyEventArgs e)
+        {
+            resvNum_ValueChanged(sender, (EventArgs)e);
+        }
+        #endregion
+
+        /// <summary>
+        /// tabKagamiを手動で切り替えた時の処理
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void tabKagami_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                //選択中タブのみ更新
+                Kagami _k = this.SelectedKagami;
+
+                switch (this.tabKagami.SelectedTab.Text)
+                {
+                    case "モニタ":
+                        //周期再描画と同じ処理
+                        try
+                        {
+                            PreviewWindowsMediaPlayer.Ctlcontrols.stop();
+                        }
+                        catch
+                        {
+                        }
+                        monViewUpdate(_k);
+                        //個別帯域制限の場合、表示内容AUDIT
+                        if (Front.BandStopTypeString[Front.BndWth.BandStopMode] == "ポート毎に個別設定")
+                            bndStopNumAudit();
+                        break;
+                    case "クライアント":
+                        try
+                        {
+                            PreviewWindowsMediaPlayer.Ctlcontrols.stop();
+                        }
+                        catch
+                        {
+                        }
+                        if (_k != null)
+                        {
+                            //新ポートのClientItemを一括設定
+                            clientView.BeginUpdate();
+                            clientView.Items.Clear();
+                            _k.Status.Client.UpdateClientTime();
+                            clientView.Items.AddRange(_k.Status.Gui.ClientItem.ToArray());
+                            clientView.EndUpdate();
+                        }
+                        break;
+                    case "リザーブ":
+                        try
+                        {
+                            PreviewWindowsMediaPlayer.Ctlcontrols.stop();
+                        }
+                        catch
+                        {
+                        }
+                        if (_k != null)
+                        {
+                            reserveView.BeginUpdate();
+                            reserveView.Items.Clear();
+                            reserveView.Items.AddRange(_k.Status.Gui.ReserveItem.ToArray());
+                            // 全登録IPの状態AUDIT
+                            // 登録IPが被らない状態のリスト作成
+                            List<string> _ip_list = new List<string>();
+                            lock (_k.Status.Gui.ReserveItem)
+                            {
+                                foreach (ListViewItem _item in _k.Status.Gui.ReserveItem)
+                                {
+                                    if (!_ip_list.Contains(_item.Text))    // clmResvViewIP
+                                        _ip_list.Add(_item.Text);
+                                }
+                            }
+                            foreach (string _ip in _ip_list)
+                            {
+                                AuditReserve(_k, _ip);
+                            }
+                            reserveView.EndUpdate();
+                        }
+                        break;
+                    case "キック":
+                        try
+                        {
+                            PreviewWindowsMediaPlayer.Ctlcontrols.stop();
+                        }
+                        catch
+                        {
+                        }
+                        if (_k != null)
+                        {
+                            kickView.BeginUpdate();
+                            kickView.Items.Clear();
+                            kickView.Items.AddRange(_k.Status.Gui.KickItem.ToArray());
+                            _k.Status.Client.UpdateKickTime();
+
+                            kickView.EndUpdate();
+                        }
+                        break;
+                    case "ログ":
+                        try
+                        {
+                            PreviewWindowsMediaPlayer.Ctlcontrols.stop();
+                        }
+                        catch
+                        {
+                        }
+                        if (_k != null)
+                        {
+                            //LogItemから一括設定
+                            logView.BeginUpdate();
+                            logView.Items.Clear();
+                            if (Front.LogMode == 0)
+                                logView.Items.AddRange(_k.Status.Gui.LogAllItem.ToArray());
+                            else
+                                logView.Items.AddRange(_k.Status.Gui.LogImpItem.ToArray());
+                            // オートスクロール
+                            if (logAutoScroll.Checked && logView.Items.Count > 0)
+                                logView.EnsureVisible(logView.Items.Count - 1);
+                            logView.EndUpdate();
+                        }
+
+                        break;
+                    case "プレビュー":
+
+                        try
+                        {
+                            if (_k != null && _k.Status.ImportStatus)
+                            {
+                                PreviewWindowsMediaPlayer.URL = "http://localhost:" + _k.Status.MyPort;
+                                PreviewWindowsMediaPlayer.Ctlcontrols.play();
+                            }
+                        }
+                        catch
+                        {
+                        }
+                        break;
+                    default:
+                        throw new Exception("not implemented.");
+
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + "\r\n" + ex.StackTrace);
+            }
+        }
+
+        #region モニタタブ
+        /// <summary>
+        /// monViewに初期アイテムを追加する
+        /// </summary>
+        private void monViewInit()
+        {
+            monView.Items.Add("IM状態");
+            monView.Items.Add("IM接続時間");
+            monView.Items.Add("EX接続数");
+            monView.Items.Add("帯域制限");
+            monView.Items.Add("UP帯域");
+            monView.Items.Add("DOWN帯域");
+            monView.Items.Add("UP転送量");
+            monView.Items.Add("DOWN転送量");
+            monView.Items.Add("ビジーカウンタ");
+            monView.Items.Add("IM不調回数");
+            monView.Items.Add("EX不調回数");
+            monView.Items.Add("EX接続回数");
+            monView.Items.Add("コメント");
+            monView.Items.Add("IM設定者IP");
+            monView.Items.Add("実況URL");
+            monView.Items.Add("鏡終了後停止");
+            monView.Items.Add("Push配信専用");
+            monView.Items.Add("認証ID/Pass");
+            //monView.Items.Add("MySQL有効");
+            //monView.Items.Add("バーチャルホスト有効");
+            //monView.Items.Add("IMBitRate(Video)");
+            //monView.Items.Add("IMBitRate(Audio)");
+            for (int cnt = 0; cnt < monView.Items.Count; cnt++)
+                monView.Items[cnt].SubItems.Add("");
+            monViewUpdate(null);
+        }
+        /// <summary>
+        /// 周期的に呼ばれて、
+        /// monViewの内容を更新する
+        /// </summary>
+        private void monViewUpdate(Kagami _k)
+        {
+            monView.BeginUpdate();
+            if (_k != null)
+            {
+                int idx = 0;
+
+                //up,down転送量の計算
+                string _ul, _dl;
+                if (_k.Status.TotalUPSize > 10 * 1000 * 1000)
+                    _ul = _k.Status.TotalUPSize.ToString("#,##0,,") + " [Mbyte]";
+                else
+                    _ul = _k.Status.TotalUPSize.ToString("#,##0,") + " [kbyte]";
+                if (_k.Status.TotalDLSize > 10 * 1000 * 1000)
+                    _dl = _k.Status.TotalDLSize.ToString("#,##0,,") + " [Mbyte]";
+                else
+                    _dl = _k.Status.TotalDLSize.ToString("#,##0,") + " [kbyte]";
+
+                // IM状態
+                monView.Items[idx].SubItems[1].Text = _k.Status.ImportURL != "待機中" ? (_k.Status.ImportStatus ? "正常" : "接続試行中...") : "待機中"; idx++;
+                // IM接続時間
+                monView.Items[idx].SubItems[1].Text = _k.Status.ImportStatus ? _k.Status.ImportTimeString : "-"; idx++;
+                // EX接続数
+                monView.Items[idx].SubItems[1].Text = _k.Status.Client.Count + "/" + _k.Status.Connection + "+" + _k.Status.Reserve; idx++;
+                // 帯域制限
+                monView.Items[idx].SubItems[1].Text = Front.BndWth.EnableBandWidth ? "開始中: " + _k.Status.LimitUPSpeed + " [kbps]" : "停止中"; idx++;
+                // UP帯域
+                monView.Items[idx].SubItems[1].Text = Unit == 0 ? (_k.Status.CurrentDLSpeed * _k.Status.Client.Count).ToString("#,##0") + " [kbps]" : (_k.Status.CurrentDLSpeed / 8 * _k.Status.Client.Count).ToString("#,##0") + " [KB/s]"; idx++;
+                // DOWN帯域
+                monView.Items[idx].SubItems[1].Text = Unit == 0 ? _k.Status.CurrentDLSpeed.ToString("#,##0") + " [kbps]" : (_k.Status.CurrentDLSpeed / 8).ToString("#,##0") + " [KB/s]"; idx++;
+                // UP転送量
+                monView.Items[idx].SubItems[1].Text = _ul; idx++;
+                // DOWN転送量
+                monView.Items[idx].SubItems[1].Text = _dl; idx++;
+                // ビジーカウンタ
+                monView.Items[idx].SubItems[1].Text = _k.Status.BusyCounter.ToString(); idx++;
+                // IM不調回数
+                monView.Items[idx].SubItems[1].Text = _k.Status.ImportError.ToString(); idx++;
+                // EX不調回数
+                monView.Items[idx].SubItems[1].Text = _k.Status.ExportError.ToString(); idx++;
+                // EX接続回数
+                monView.Items[idx].SubItems[1].Text = _k.Status.ExportCount.ToString(); idx++;
+                // コメント
+                monView.Items[idx].SubItems[1].Text = _k.Status.Comment; idx++;
+                // 接続設定者IP
+                monView.Items[idx].SubItems[1].Text = _k.Status.SetUserIP; idx++;
+                // 実況URL
+                monView.Items[idx].SubItems[1].Text = _k.Status.Url; idx++;
+                //鏡終了後停止フラグ
+                monView.Items[idx].SubItems[1].Text = _k.Status.ListenStop ? "ON" : "OFF"; idx++;
+                //Push配信専用フラグ
+                monView.Items[idx].SubItems[1].Text = _k.Status.PushOnly ? "ON" : "OFF"; idx++;
+                //認証ID,Pass
+                monView.Items[idx].SubItems[1].Text = _k.Status.ExportAuth ? _k.Status.AuthID + "/" + _k.Status.AuthPass : "無効"; idx++;
+                /////
+                /*
+                //MySQLフラグ
+                monView.Items[idx].SubItems[1].Text = _k.Status.SQLOn ? "ON" : "OFF"; idx++;
+                //VHOSTフラグ
+                monView.Items[idx].SubItems[1].Text = _k.Status.VirtualHost ? "ON" : "OFF"; idx++;
+                */
+                ////
+
+                //IMBitRate(Video)
+                //monView.Items[idx].SubItems[1].Text = _k.Status.NowBitRateVideo+ " [kbps]"; idx++;
+                //IMBitRate(Audeo)
+                //monView.Items[idx].SubItems[1].Text = _k.Status.NowBitRateAudio + " [kbps]"; idx++;
+            }
+            else
+            {
+                int idx = 0;
+                // IM状態
+                monView.Items[idx].SubItems[1].Text = "未接続"; idx++;
+                // IM接続時間
+                monView.Items[idx].SubItems[1].Text = "-"; idx++;
+                // EX接続数
+                monView.Items[idx].SubItems[1].Text = "-"; idx++;
+                // 帯域制限
+                monView.Items[idx].SubItems[1].Text = (Front.BndWth.EnableBandWidth ? "開始中" : "停止中"); idx++;
+                // UP帯域
+                monView.Items[idx].SubItems[1].Text = Unit == 0 ? "0 [kbps]" : "0 [KB/s]"; idx++;
+                // DOWN帯域
+                monView.Items[idx].SubItems[1].Text = Unit == 0 ? "0 [kbps]" : "0 [KB/s]"; idx++;
+                // UP転送量
+                monView.Items[idx].SubItems[1].Text = "0 [kbyte]"; idx++;
+                // DOWN転送量
+                monView.Items[idx].SubItems[1].Text = "0 [kbyte]"; idx++;
+                // ビジーカウンタ
+                monView.Items[idx].SubItems[1].Text = "0"; idx++;
+                // IM不調回数
+                monView.Items[idx].SubItems[1].Text = "0"; idx++;
+                // EX不調回数
+                monView.Items[idx].SubItems[1].Text = "0"; idx++;
+                // EX接続回数
+                monView.Items[idx].SubItems[1].Text = "0"; idx++;
+                // コメント
+                monView.Items[idx].SubItems[1].Text = ""; idx++;
+                // 接続設定者IP
+                monView.Items[idx].SubItems[1].Text = ""; idx++;
+                // 実況URL
+                monView.Items[idx].SubItems[1].Text = ""; idx++;
+                //鏡終了後停止予定
+                monView.Items[idx].SubItems[1].Text = ""; idx++;
+                //Push配信専用フラグ
+                monView.Items[idx].SubItems[1].Text = ""; idx++;
+                //認証ID、pass
+                monView.Items[idx].SubItems[1].Text = ""; idx++;
+                ////
+                /*
+                //MySQL有効フラグ
+                monView.Items[idx].SubItems[1].Text = ""; idx++;
+                //VHOSTフラグ
+                monView.Items[idx].SubItems[1].Text = ""; idx++;
+                */
+                ////
+
+
+                //IMBitRate(Video)
+                //monView.Items[idx].SubItems[1].Text = ""; idx++;
+                //IMBitRate(Audeo)
+                //monView.Items[idx].SubItems[1].Text = ""; idx++;
+            }
+            monView.EndUpdate();
         }
         /// <summary>
         /// kagamiView右クリックメニュー
@@ -1114,85 +2217,98 @@ namespace Kagamin2
             return;
         }
         /// <summary>
-        /// monAllViewに初期アイテムを追加する
-        /// </summary>
-        private void monAllViewInit()
-        {
-            monAllView.Items.Add("全CPU使用率");
-            monAllView.Items.Add("鏡CPU使用率");
-            monAllView.Items.Add("総UP帯域");
-            monAllView.Items.Add("総DL帯域");
-            monAllView.Items.Add("UP転送量/日");
-            monAllView.Items.Add("DL転送量/日");
-            monAllView.Items.Add("UP転送量/月");
-            monAllView.Items.Add("DL転送量/月");
-            for (int cnt = 0; cnt < monAllView.Items.Count; cnt++)
-                monAllView.Items[cnt].SubItems.Add("");
-            monAllViewUpdate();
-        }
-        /// <summary>
-        /// 全体モニタの更新
-        /// </summary>
-        private void monAllViewUpdate()
-        {
-            //総up,down転送速度の計算
-            int _up = 0, _down = 0;
-            foreach (Kagami _k in Front.KagamiList)
-            {
-                _up += _k.Status.CurrentDLSpeed * _k.Status.Client.Count;
-                _down += _k.Status.CurrentDLSpeed;
-            }
-
-            //総up,down転送量の計算
-            //ulong _ul_day, _dl_day, _ul_mon, _dl_mon;
-            string _ul_day, _dl_day, _ul_mon, _dl_mon;
-
-            _ul_day = ((ulong)(Front.Log.TrsUpDay + Front.TotalUP)).ToString("#,##0,, [Mbyte]");
-            _dl_day = ((ulong)(Front.Log.TrsDlDay + Front.TotalDL)).ToString("#,##0,, [Mbyte]");
-            _ul_mon = ((ulong)(Front.Log.TrsUpMon + Front.TotalUP)).ToString("#,##0,, [Mbyte]");
-            _dl_mon = ((ulong)(Front.Log.TrsDlMon + Front.TotalDL)).ToString("#,##0,, [Mbyte]");
-
-            int idx = 0;
-            // 全体のCPU使用率
-            try
-            {
-                monAllView.Items[idx].SubItems[1].Text = System.Math.Round(Front.CPU_ALL.NextValue(), 1).ToString("0.0") + "%";
-            }
-            catch
-            {
-                monAllView.Items[idx].SubItems[1].Text = "取得NG";
-            }
-            idx++;
-            // 鏡のCPU使用率
-            try
-            {
-                monAllView.Items[idx].SubItems[1].Text = System.Math.Round(Front.CPU_APP.NextValue(), 1).ToString("0.0") + "%";
-            }
-            catch
-            {
-                monAllView.Items[idx].SubItems[1].Text = "取得NG";
-            }
-            idx++;
-            // 総UP帯域
-            monAllView.Items[idx].SubItems[1].Text = Unit == 0 ? _up.ToString("#,##0") + " [kbps]" : (_up/8).ToString("#,##0") + " [KB/s]"; idx++;
-            // 総DOWN帯域
-            monAllView.Items[idx].SubItems[1].Text = Unit == 0 ? _down.ToString("#,##0") + " [kbps]" : (_down/8).ToString("#,##0") + " [KB/s]"; idx++;
-            // 総UP転送量/日
-            monAllView.Items[idx].SubItems[1].Text = _ul_day; idx++;
-            // 総DL転送量/日
-            monAllView.Items[idx].SubItems[1].Text = _dl_day; idx++;
-            // 総UP転送量/月
-            monAllView.Items[idx].SubItems[1].Text = _ul_mon; idx++;
-            // 総DL転送量/月
-            monAllView.Items[idx].SubItems[1].Text = _dl_mon; idx++;
-        }
-        /// <summary>
-        /// monAllViewのダブルクリック
+        /// monViewのダブルクリック
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void monAllView_DoubleClick(object sender, EventArgs e)
+        private void monView_DoubleClick(object sender, EventArgs e)
         {
+            for (int i = 0; i < monView.Items.Count; i++)
+            {
+                if (monView.Items[i].Selected)
+                {
+                    if (i == 15)
+                    {
+                        Kagami _k = Front.IndexOf(int.Parse(myPort.Text));
+                        if (_k != null)
+                        {
+                            if (_k.Status.ImportURL != "待機中")
+                                _k.Status.ListenStop = !_k.Status.ListenStop;
+                        }
+                        monAllViewUpdate();
+                        monViewUpdate(this.SelectedKagami);
+                        return;
+                    }
+                    if (i == 16)
+                    {
+                        Kagami _k = Front.IndexOf(int.Parse(myPort.Text));
+                        if (_k != null)
+                        {
+                            if (Front.Opt.EnablePush)
+                                _k.Status.PushOnly = !_k.Status.PushOnly;
+                            else
+                            {
+                                _k.Status.PushOnly = false;
+                                MessageBox.Show("Pushサーバーは無効になっています。", "無効", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            }
+                        }
+                        monAllViewUpdate();
+                        monViewUpdate(this.SelectedKagami);
+                        return;
+                    }
+                    if (i == 17)
+                    {
+                        Kagami _k = Front.IndexOf(int.Parse(myPort.Text));
+                        if (_k.Status.ExportAuth)
+                        {
+
+                            Front.AuthDiagflag = false;
+                            AuthDiag authdiag = new AuthDiag(_k.Status);
+                            authdiag.ShowDialog();
+                            Front.AuthDiagflag = true;
+                        }
+                        monAllViewUpdate();
+                        monViewUpdate(this.SelectedKagami);
+                        return;
+                    }/*
+                    if (i == 18)
+                    {
+                        Kagami _k = Front.IndexOf(int.Parse(myPort.Text));
+                        if (_k != null)
+                        {
+                            _k.Status.Multiaudio();
+                        }
+                        monAllViewUpdate();
+                        monViewUpdate(this.SelectedKagami);
+                        return;
+                    }*/
+
+                    /*
+                    if (i == 17)
+                    {
+                        Kagami _k = Front.IndexOf(int.Parse(myPort.Text));
+                        if (_k != null)
+                        {
+                            _k.Status.SQLOn = !_k.Status.SQLOn;
+                        }
+                        monAllViewUpdate();
+                        monViewUpdate(this.SelectedKagami);
+                        return;
+                    }
+                    if (i == 18)
+                    {
+                        Kagami _k = Front.IndexOf(int.Parse(myPort.Text));
+                        if (_k != null)
+                        {
+                            _k.Status.VirtualHost = !_k.Status.VirtualHost;
+                        }
+                        monAllViewUpdate();
+                        monViewUpdate(this.SelectedKagami);
+                        return;
+                    }
+                    */
+                }
+            }
             // kbps⇔KB/s切替
             if (Unit == 0)
                 Unit = 1;
@@ -1202,653 +2318,21 @@ namespace Kagamin2
             monAllViewUpdate();
             monViewUpdate(this.SelectedKagami);
         }
-        #endregion
-        
-        #region 右パネル上部
         /// <summary>
-        /// インポートURLでキー入力した時
+        /// プッシュ配信専用フラグ切り替え
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void importURL_KeyPress(object sender, KeyPressEventArgs e)
-        {
-            // Enter入力なら接続処理を行う
-            if (e.KeyChar == (char)Keys.Enter)
-            {
-                connBTN_Click(sender, EventArgs.Empty);
-                e.Handled = true;
-            }
-        }
-
-        #region ImportURL右クリックメニュー
-        /// <summary>
-        /// お気に入りへ登録メニュー選択時
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void AddFavoriteMenu_Click(object sender, EventArgs e)
-        {
-            // 登録済みチェック
-            if (Front.Gui.FavoriteList.Contains(importURL.Text))
-                return;
-
-            // 右クリックメニューに反映
-            ToolStripMenuItem _tsmi = new ToolStripMenuItem();
-            _tsmi.Text = importURL.Text;
-            _tsmi.Click += PasteFavoriteURL;
-            ImportUrlRClick.Items.Add(_tsmi);
-
-            // 設定ファイルに反映
-            Front.Gui.FavoriteList.Add(importURL.Text);
-            Front.SaveSetting();
-        }
-
-        /// <summary>
-        /// お気に入りをImportURLへ貼り付け
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void PasteFavoriteURL(object sender, EventArgs e)
-        {
-            ToolStripMenuItem _tsmi = (ToolStripMenuItem)sender;
-            try
-            {
-                if (!Front.IndexOf(int.Parse(myPort.Text)).Status.RunStatus)
-                    importURL.Text = _tsmi.Text;
-            }
-            catch
-            {
-                // 状態チェック失敗
-                importURL.Text = _tsmi.Text;
-            }
-        }
-
-        private void ImportUrlCutMenu_Click(object sender, EventArgs e)
-        {
-            importURL.Cut();
-        }
-
-        private void ImportUrlCopyMenu_Click(object sender, EventArgs e)
-        {
-            importURL.Copy();
-        }
-
-        private void ImportUrlPasteMenu_Click(object sender, EventArgs e)
-        {
-            importURL.Paste();
-        }
-
-        private void ImportUrlEraseMenu_Click(object sender, EventArgs e)
-        {
-            if (importURL.SelectionLength > 0)
-                importURL.Text = importURL.Text.Remove(importURL.SelectionStart, importURL.SelectionLength);
-        }
-        #endregion
-
-        /// <summary>
-        /// 鏡ポート番号欄でキー入力した時
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void myPort_KeyPress(object sender, KeyPressEventArgs e)
-        {
-            // Enter入力なら接続処理を行う
-            if (e.KeyChar == (char)Keys.Enter)
-            {
-                connBTN_Click(sender, EventArgs.Empty);
-                e.Handled = true;
-            }
-        }
-        /// <summary>
-        /// 接続ボタンを押した時
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void connBTN_Click(object sender, EventArgs e)
-        {
-            int _port;
-
-            if (!Front.Hp.UseHP && importURL.Text == "")
-            {
-                MessageBox.Show("インポートURLを入力してください。", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            try { _port = int.Parse(myPort.Text); }
-            catch { MessageBox.Show("ポート番号が異常です。\r\n65535以下の数値を設定してください。", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
-
-            connBTN.Enabled = false;
-            if(Front.IndexOf(_port) == null)
-            {
-                logView.Items.Clear();
-                Kagami _k = new Kagami(importURL.Text, _port, (int)connNum.Value, (int)resvNum.Value);
-                // 個別帯域設定の場合、上限帯域を設定しておく
-                if(Front.BndWth.BandStopMode == 2)
-                {
-                    _k.Status.GUILimitUPSpeed = (int)Front.BndWth.BandStopValue;
-                    _k.Status.LimitUPSpeed = Front.CnvLimit((int)Front.BndWth.BandStopValue, (int)Front.BndWth.BandStopUnit);
-                }
-                Front.Add(_k);
-            }
-        }
-
-        /// <summary>
-        /// 切断ボタンを押した時
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void discBTN_Click(object sender, EventArgs e)
-        {
-            discBTN.Enabled = false;
-            Kagami _k = this.SelectedKagami;
-            if (_k != null)
-                _k.Status.RunStatus = false;
-        }
-
-        /// <summary>
-        /// 接続・切断ボタン状態オーディット
-        /// </summary>
-        private void ButtonAudit()
-        {
-            Kagami _k = this.SelectedKagami;
-            if (_k == null)
-            {
-                if (connBTN.Enabled == false)
-                {
-                    // ポート未接続でconnボタン無効：切断完了
-                    connBTN.Enabled = true;
-                    discBTN.Enabled = false;
-                    // 待機中/接続中→未接続になったのでGUI表示更新
-                    myPort_StateChanged();
-                }
-                else
-                {
-                    // 未接続状態でconnボタン有効：Idle中
-                }
-                // TitleBar更新
-                this.Text = Front.AppName;
-            }
-            else
-            {
-                if (_k.Status.RunStatus == true)
-                {
-                    if (discBTN.Enabled == false)
-                    {
-                        // ポート接続状態でdiscボタン無効：接続完了
-                        connBTN.Enabled = false;
-                        discBTN.Enabled = true;
-                        // 未接続→待機中になったのでGUI表示更新
-                        myPort_StateChanged();
-                    }
-                    else
-                    {
-                        // ポート接続状態でdiscボタン有効：Running中
-                        if (importURL.Text != _k.Status.ImportURL)
-                            importURL.Text = _k.Status.ImportURL;
-                    }
-                }
-                else
-                {
-                    // ポート接続状態でRunStatus==false：切断処理中
-                }
-                // TitleBar更新
-                this.Text = "EX " + _k.Status.Client.Count + "/" + _k.Status.Connection + "+" + _k.Status.Reserve
-                    + " PORT:" + _k.Status.MyPort + " " + Front.AppName;
-            }
-
-        }
-
-        /// <summary>
-        /// 消去ボタンを押した時
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void clearBTN_Click(object sender, EventArgs e)
-        {
-            if(importURL.Enabled)
-                importURL.Text = "";
-        }
-
-        /// <summary>
-        /// 鏡ボタンを押した時
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void copyMyUrlBTN_Click(object sender, EventArgs e)
-        {
-            if (Front.GetGlobalIP())
-                Clipboard.SetText("http://" + Front.GlobalIP + ":" + myPort.Text + "/");
-        }
-
-        /// <summary>
-        /// 設ボタンを押した時
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void optBTN_Click(object sender, EventArgs e)
-        {
-            Option optDlg = new Option();
-            // 設定画面表示
-            optDlg.ShowDialog();
-            // 新設定をロード
-            LoadSetting();
-        }
-
-        /// <summary>
-        /// 自ポート番号を変更した時
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void myPort_TextChanged(object sender, EventArgs e)
-        {
-            myPort_StateChanged();
-        }
-        /// <summary>
-        /// ポート状態変更
-        /// </summary>
-        private void myPort_StateChanged()
-        {
-            ButtonAudit();
-
-            Kagami _k = this.SelectedKagami;
-
-            //右パネル上部の状態を修正
-            if (_k != null)
-            {
-                //起動中ポート
-                importURL.Text = _k.Status.ImportURL;
-                importURL.Enabled = false;
-                connNum.Value = _k.Status.Conn_UserSet;
-                resvNum.Value = _k.Status.Reserve;
-            }
-            else
-            {
-                //未起動ポート
-                if (importURL.Text == "待機中")
-                    importURL.Text = "";
-                importURL.Enabled = true;
-            }
-            //tabKagamiのタブ状態を修正
-            tabKagami_SelectedIndexChanged(null, EventArgs.Empty);
-        }
-
-        /// <summary>
-        /// 最大通常接続数を変更
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void connNum_ValueChanged(object sender, EventArgs e)
+        private void MonModeChgMenu_Click(object sender, EventArgs e)
         {
             Kagami _k = this.SelectedKagami;
             if (_k != null)
             {
-                _k.Status.Conn_UserSet = (int)connNum.Value;
-                if (Front.BndWth.EnableBandWidth)
-                {
-                    // 帯域制限中は人数減らしは即反映。
-                    // 人数増加は帯域制限タスクでの再計算契機に行う。
-                    if (_k.Status.Connection > connNum.Value)
-                        _k.Status.Connection = (int)connNum.Value;
-                }
-                else
-                {
-                    _k.Status.Connection = (int)connNum.Value;
-                }
-                LeftFlag = true;
-                BandFlag = true;
-            }
-            else
-            {
-                Front.Gui.Conn = (uint)connNum.Value;
-            }
-        }
-        /// <summary>
-        /// 最大通常接続数を変更（キー入力）
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void connNum_KeyUp(object sender, KeyEventArgs e)
-        {
-            connNum_ValueChanged(sender, (EventArgs)e);
-        }
-
-        /// <summary>
-        /// 最大リザーブ接続数を変更
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void resvNum_ValueChanged(object sender, EventArgs e)
-        {
-            Kagami _k = this.SelectedKagami;
-            if (_k != null)
-            {
-                _k.Status.Reserve = (int)resvNum.Value;
-                LeftFlag = true;
-                BandFlag = true;
-            }
-            else
-            {
-                Front.Gui.Reserve = (uint)resvNum.Value;
-            }
-        }
-        /// <summary>
-        /// 最大リザーブ接続数を変更（キー入力）
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void resvNum_KeyUp(object sender, KeyEventArgs e)
-        {
-            resvNum_ValueChanged(sender, (EventArgs)e);
-        }
-        #endregion
-
-        /// <summary>
-        /// tabKagamiを手動で切り替えた時の処理
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void tabKagami_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            //選択中タブのみ更新
-            Kagami _k = this.SelectedKagami;
-            switch (this.tabKagami.SelectedTab.Text)
-            {
-                case "モニタ":
-                    //周期再描画と同じ処理
-                    monViewUpdate(_k);
-                    //個別帯域制限の場合、表示内容AUDIT
-                    if (Front.BandStopTypeString[Front.BndWth.BandStopMode] == "ポート毎に個別設定")
-                        bndStopNumAudit();
-                    break;
-                case "クライアント":
-                    if (_k != null)
-                    {
-                        //新ポートのClientItemを一括設定
-                        clientView.BeginUpdate();
-                        clientView.Items.Clear();
-                        _k.Status.Client.UpdateClientTime();
-                        clientView.Items.AddRange(_k.Status.Gui.ClientItem.ToArray());
-                        clientView.EndUpdate();
-                    }
-                    break;
-                case "リザーブ":
-                    if (_k != null)
-                    {
-                        reserveView.BeginUpdate();
-                        reserveView.Items.Clear();
-                        reserveView.Items.AddRange(_k.Status.Gui.ReserveItem.ToArray());
-                        // 全登録IPの状態AUDIT
-                        // 登録IPが被らない状態のリスト作成
-                        List<string> _ip_list = new List<string>();
-                        lock (_k.Status.Gui.ReserveItem)
-                        {
-                            foreach (ListViewItem _item in _k.Status.Gui.ReserveItem)
-                            {
-                                if (!_ip_list.Contains(_item.Text))    // clmResvViewIP
-                                    _ip_list.Add(_item.Text);
-                            }
-                        }
-                        foreach (string _ip in _ip_list)
-                        {
-                            AuditReserve(_k, _ip);
-                        }
-                        reserveView.EndUpdate();
-                    }
-                    break;
-                case "キック":
-                    if (_k != null)
-                    {
-                        kickView.BeginUpdate();
-                        kickView.Items.Clear();
-                        _k.Status.Client.UpdateKickTime();
-                        kickView.Items.AddRange(_k.Status.Gui.KickItem.ToArray());
-                        kickView.EndUpdate();
-                    }
-                    break;
-                case "ログ":
-                    if (_k != null)
-                    {
-                        //LogItemから一括設定
-                        logView.BeginUpdate();
-                        logView.Items.Clear();
-                        if (Front.LogMode == 0)
-                            logView.Items.AddRange(_k.Status.Gui.LogAllItem.ToArray());
-                        else
-                            logView.Items.AddRange(_k.Status.Gui.LogImpItem.ToArray());
-                        // オートスクロール
-                        if (logAutoScroll.Checked && logView.Items.Count > 0)
-                            logView.EnsureVisible(logView.Items.Count - 1);
-                        logView.EndUpdate();
-                    }
-                    break;
-                default:
-                    throw new Exception("not implemented.");
-            }
-        }
-
-        #region モニタタブ
-
-        #region monViewの処理
-        /// <summary>
-        /// monViewに初期アイテムを追加する
-        /// </summary>
-        private void monViewInit()
-        {
-            monView.Items.Add("IM状態");
-            monView.Items.Add("IM接続時間");
-            monView.Items.Add("EX接続数");
-            monView.Items.Add("帯域制限");
-            monView.Items.Add("UP帯域");
-            monView.Items.Add("DOWN帯域");
-            monView.Items.Add("UP転送量");
-            monView.Items.Add("DOWN転送量");
-            monView.Items.Add("ビジーカウンタ");
-            monView.Items.Add("IM不調回数");
-            monView.Items.Add("EX不調回数");
-            monView.Items.Add("EX接続回数");
-            monView.Items.Add("コメント");
-            monView.Items.Add("IM設定者IP");
-            monView.Items.Add("実況URL");
-            monView.Items.Add("Redirect/子");
-            monView.Items.Add("Redirect/親");
-#if PLUS
-            monView.Items.Add("Mode");
-#endif
-            for (int cnt = 0; cnt < monView.Items.Count; cnt++)
-                monView.Items[cnt].SubItems.Add("");
-            monViewUpdate(null);
-        }
-        /// <summary>
-        /// 周期的に呼ばれて、
-        /// monViewの内容を更新する
-        /// </summary>
-        private void monViewUpdate(Kagami _k)
-        {
-            monView.BeginUpdate();
-            if (_k != null)
-            {
-                int idx = 0;
-
-                //up,down転送量の計算
-                string _ul, _dl;
-                //if (_k.Status.TotalUPSize > 10 * 1000 * 1000)
-                    _ul = _k.Status.TotalUPSize.ToString("#,##0,,") + " [Mbyte]";
-                //else
-                //    _ul = _k.Status.TotalUPSize.ToString("#,##0,") + " [kbyte]";
-                //if (_k.Status.TotalDLSize > 10 * 1000 * 1000)
-                    _dl = _k.Status.TotalDLSize.ToString("#,##0,,") + " [Mbyte]";
-                //else
-                //    _dl = _k.Status.TotalDLSize.ToString("#,##0,") + " [kbyte]";
-
-                // IM状態
-                monView.Items[idx].SubItems[1].Text = _k.Status.ImportURL != "待機中" ? (_k.Status.ImportStatus ? "正常" : "接続試行中...") : "待機中"; idx++;
-                // IM接続時間
-                monView.Items[idx].SubItems[1].Text = _k.Status.ImportStatus ? _k.Status.ImportTimeString : "-"; idx++;
-                // EX接続数
-                monView.Items[idx].SubItems[1].Text = _k.Status.Client.Count + "/" + _k.Status.Connection + "+" + _k.Status.Reserve; idx++;
-                // 帯域制限
-                monView.Items[idx].SubItems[1].Text = Front.BndWth.EnableBandWidth ? "開始中: " + _k.Status.LimitUPSpeed + " [kbps]" : "停止中"; idx++;
-                // UP帯域
-                monView.Items[idx].SubItems[1].Text = Unit == 0 ? (_k.Status.CurrentDLSpeed * _k.Status.Client.Count).ToString("#,##0") + " [kbps]" : (_k.Status.CurrentDLSpeed/8 * _k.Status.Client.Count).ToString("#,##0") + " [KB/s]"; idx++;
-                // DOWN帯域
-                monView.Items[idx].SubItems[1].Text = Unit == 0 ? _k.Status.CurrentDLSpeed.ToString("#,##0") + " [kbps]" : (_k.Status.CurrentDLSpeed/8).ToString("#,##0") + " [KB/s]"; idx++;
-                // UP転送量
-                monView.Items[idx].SubItems[1].Text = _ul; idx++;
-                // DOWN転送量
-                monView.Items[idx].SubItems[1].Text = _dl; idx++;
-                // ビジーカウンタ
-                monView.Items[idx].SubItems[1].Text = _k.Status.BusyCounter.ToString(); idx++;
-                // IM不調回数
-                monView.Items[idx].SubItems[1].Text = _k.Status.ImportError.ToString(); idx++;
-                // EX不調回数
-                monView.Items[idx].SubItems[1].Text = _k.Status.ExportError.ToString(); idx++;
-                // EX接続回数
-                monView.Items[idx].SubItems[1].Text = _k.Status.ExportCount.ToString(); idx++;
-                // コメント
-                monView.Items[idx].SubItems[1].Text = _k.Status.Comment; idx++;
-                // 接続設定者IP
-                monView.Items[idx].SubItems[1].Text = _k.Status.SetUserIP; idx++;
-                // 実況URL
-                monView.Items[idx].SubItems[1].Text = _k.Status.Url; idx++;
-                // Redirect/子
-                monView.Items[idx].SubItems[1].Text = _k.Status.EnableRedirectChild == true ? "有効" : "無効"; idx++;
-                // Redirect/親
-                monView.Items[idx].SubItems[1].Text = _k.Status.EnableRedirectParent == true ? "有効" : "無効"; idx++;
-#if PLUS
-                // Mode
-                monView.Items[idx].SubItems[1].Text = _k.Status.DisablePull ? "Pull無効/Push有効" : Front.Opt.EnablePush ? "Pull有効/Push有効" : "Pull有効/Push無効"; idx++;
-#endif
-            }
-            else
-            {
-                int idx = 0;
-                // IM状態
-                monView.Items[idx].SubItems[1].Text = "未接続"; idx++;
-                // IM接続時間
-                monView.Items[idx].SubItems[1].Text = "-"; idx++;
-                // EX接続数
-                monView.Items[idx].SubItems[1].Text = "-"; idx++;
-                // 帯域制限
-                monView.Items[idx].SubItems[1].Text = (Front.BndWth.EnableBandWidth ? "開始中" : "停止中"); idx++;
-                // UP帯域
-                monView.Items[idx].SubItems[1].Text = Unit == 0 ? "0 [kbps]" : "0 [KB/s]"; idx++;
-                // DOWN帯域
-                monView.Items[idx].SubItems[1].Text = Unit == 0 ? "0 [kbps]" : "0 [KB/s]"; idx++;
-                // UP転送量
-                monView.Items[idx].SubItems[1].Text = "0 [kbyte]"; idx++;
-                // DOWN転送量
-                monView.Items[idx].SubItems[1].Text = "0 [kbyte]"; idx++;
-                // ビジーカウンタ
-                monView.Items[idx].SubItems[1].Text = "0"; idx++;
-                // IM不調回数
-                monView.Items[idx].SubItems[1].Text = "0"; idx++;
-                // EX不調回数
-                monView.Items[idx].SubItems[1].Text = "0"; idx++;
-                // EX接続回数
-                monView.Items[idx].SubItems[1].Text = "0"; idx++;
-                // コメント
-                monView.Items[idx].SubItems[1].Text = ""; idx++;
-                // 接続設定者IP
-                monView.Items[idx].SubItems[1].Text = ""; idx++;
-                // 実況URL
-                monView.Items[idx].SubItems[1].Text = ""; idx++;
-                // Redirect/子
-                monView.Items[idx].SubItems[1].Text = "-"; idx++;
-                // Redirect/親
-                monView.Items[idx].SubItems[1].Text = "-"; idx++;
-#if PLUS
-                // Mode
-                monView.Items[idx].SubItems[1].Text = Front.Opt.EnablePush ? "Push有効" : "Push無効"; idx++;
-#endif
-            }
-            monView.EndUpdate();
-        }
-        /// <summary>
-        /// monViewのダブルクリック
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void monView_DoubleClick(object sender, EventArgs e)
-        {
-            ListView _monView = (ListView)sender;
-            Kagami _k = this.SelectedKagami;
-            switch (_monView.FocusedItem.Text)
-            {
-                case "UP帯域":
-                case "DOWN帯域":
-                    // kbps⇔KB/s切替
-                    this.Unit = (uint)(this.Unit == 0 ? 1 : 0);
-                    break;
-                case "Redirect/子":
-                    if (_k != null)
-                    {
-                        _k.Status.EnableRedirectChild = !_k.Status.EnableRedirectChild;
-                        MonRedirCMenu.Checked = _k.Status.EnableRedirectChild;
-                    }
-                    break;
-                case "Redirect/親":
-                    if (_k != null)
-                    {
-                        _k.Status.EnableRedirectParent = !_k.Status.EnableRedirectParent;
-                        MonRedirPMenu.Checked = _k.Status.EnableRedirectParent;
-                    }
-                    break;
-                case "Mode":
-                    if (_k != null)
-                    {
-                        if (Front.Opt.EnablePush)
-                        {
-                            _k.Status.DisablePull = !_k.Status.DisablePull;
-                        }
-                    }
-                    break;
-                default:
-                    return;
+                _k.Status.PushOnly = !_k.Status.PushOnly;
             }
             // 即更新
-            monAllViewUpdate();
             monViewUpdate(this.SelectedKagami);
         }
-
-        /// <summary>
-        /// モニタタブで右クリックメニューを開こうとした時
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void MonViewRClick_Opening(object sender, CancelEventArgs e)
-        {
-            Kagami _k = this.SelectedKagami;
-            if (_k == null)
-            {
-                MonRedirCMenu.Checked = false;
-                MonRedirPMenu.Checked = false;
-                MonImIpCopyMenu.Enabled = false;
-                MonRedirCMenu.Enabled = false;
-                MonRedirPMenu.Enabled = false;
-                MonModeChgMenu.Enabled = false;
-            }
-            else
-            {
-                MonImIpCopyMenu.Enabled = false;
-                foreach (ListViewItem _item in monView.Items)
-                {
-                    if (_item.Text == "IM設定者IP")
-                    {
-                        if (_item.SubItems[1].Text != "")
-                        {
-                            MonImIpCopyMenu.Enabled = true;
-                            break;
-                        }
-                    }
-                }
-                MonRedirCMenu.Enabled = true;
-                MonRedirPMenu.Enabled = true;
-                MonRedirCMenu.Checked = _k.Status.EnableRedirectChild;
-                MonRedirPMenu.Checked = _k.Status.EnableRedirectParent;
-                MonModeChgMenu.Enabled = Front.Opt.EnablePush;
-            }
-        }
-
         /// <summary>
         /// kbps⇔KB/s切り替えメニューのクリック
         /// </summary>
@@ -1862,6 +2346,24 @@ namespace Kagamin2
             monAllViewUpdate();
             monViewUpdate(this.SelectedKagami);
         }
+        /// <summary>
+        /// 鏡終了後停止切り替え
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void MonStoppingKagamiCMenu_Click(object sender, EventArgs e)
+        {
+            Kagami _k = this.SelectedKagami;
+
+            if (_k != null)
+            {
+                _k.Status.ListenStop = !_k.Status.ListenStop;
+            }
+            // 即更新
+            monAllViewUpdate();
+            monViewUpdate(this.SelectedKagami);
+        }
+
 
         /// <summary>
         /// IM設定者IPコピーメニューのクリック
@@ -1883,58 +2385,6 @@ namespace Kagamin2
             }
         }
 
-        /// <summary>
-        /// Redirect/子メニューのクリック
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void MonRedirCMenu_Click(object sender, EventArgs e)
-        {
-            Kagami _k = this.SelectedKagami;
-            if (_k != null)
-            {
-                _k.Status.EnableRedirectChild = !_k.Status.EnableRedirectChild;
-                MonRedirCMenu.Checked = _k.Status.EnableRedirectChild;
-            }
-            // 即更新
-            monViewUpdate(this.SelectedKagami);
-        }
-
-        /// <summary>
-        /// Redirect/親メニューのクリック
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void MonRedirPMenu_Click(object sender, EventArgs e)
-        {
-            Kagami _k = this.SelectedKagami;
-            if (_k != null)
-            {
-                _k.Status.EnableRedirectParent = !_k.Status.EnableRedirectParent;
-                MonRedirPMenu.Checked = _k.Status.EnableRedirectParent;
-            }
-            // 即更新
-            monViewUpdate(this.SelectedKagami);
-        }
-
-        /// <summary>
-        /// Mode切り替えメニュー
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void MonModeChgMenu_Click(object sender, EventArgs e)
-        {
-            Kagami _k = this.SelectedKagami;
-            if (_k != null)
-            {
-                _k.Status.DisablePull = !_k.Status.DisablePull;
-            }
-            // 即更新
-            monViewUpdate(this.SelectedKagami);
-        }
-        #endregion
-
-        #region 帯域制限ダイアログの処理
         /// <summary>
         /// 帯域制限値変更
         /// </summary>
@@ -2003,8 +2453,6 @@ namespace Kagamin2
         }
         #endregion
 
-        #endregion
-
         #region クライアントタブ
         /// <summary>
         /// クライアントの接続・切断時に起動される
@@ -2050,10 +2498,10 @@ namespace Kagamin2
                             clientView.Items.Remove(_ke.Item);
                     }
                     // reserveView状態更新
-                    if (Front.clmCV_IP_IDX == 0)
+                    if (clmClientViewIP.DisplayIndex == 0)
                         AuditReserve(_k, _ke.Item.Text);
                     else
-                        AuditReserve(_k, _ke.Item.SubItems[Front.clmCV_IP_IDX].Text);
+                        AuditReserve(_k, _ke.Item.SubItems[clmClientViewIP.DisplayIndex].Text);
                 }
             }
         }
@@ -2065,28 +2513,15 @@ namespace Kagamin2
         private void ClientViewRClick_Opening(object sender, CancelEventArgs e)
         {
             // 選択中アイテムがあるかチェックして、無ければDisable
-            // ただしClientResolveHostMenuは常にEnable
             for (int cnt = 0; cnt < clientView.Items.Count; cnt++)
             {
                 if (clientView.Items[cnt].Selected)
                 {
-                    //ClientViewRClick.Enabled = true;
-                    ClientDiscMenu.Enabled = true;
-                    ClientKickDefMenu.Enabled = true;
-                    ClientKickSubMenu.Enabled = true;
-                    ClientAddResvMenu.Enabled = true;
-                    ClientIPCopyMenu.Enabled = true;
-                    ClientResolveHostMenu.Enabled = true;
+                    ClientViewRClick.Enabled = true;
                     return;
                 }
             }
-            //ClientViewRClick.Enabled = false;
-            ClientDiscMenu.Enabled = false;
-            ClientKickDefMenu.Enabled = false;
-            ClientKickSubMenu.Enabled = false;
-            ClientAddResvMenu.Enabled = false;
-            ClientIPCopyMenu.Enabled = false;
-            ClientResolveHostMenu.Enabled = true;
+            ClientViewRClick.Enabled = false;
             return;
         }
 
@@ -2109,10 +2544,10 @@ namespace Kagamin2
                     if (clientView.Items[cnt].Selected)
                     {
                         //強制切断
-                        if (Front.clmCV_ID_IDX == 0)
+                        if (clmClientViewID.DisplayIndex == 0)
                             _k.Status.Client.Disc(clientView.Items[cnt].Text);
                         else
-                            _k.Status.Client.Disc(clientView.Items[cnt].SubItems[Front.clmCV_ID_IDX].Text);
+                            _k.Status.Client.Disc(clientView.Items[cnt].SubItems[clmClientViewID.DisplayIndex].Text);
                     }
                 }
             }
@@ -2147,44 +2582,10 @@ namespace Kagamin2
                         continue;
 
                     //内部管理KickListへの登録
-                    if (Front.clmCV_IP_IDX == 0)
-                        Front.AddKickUser(clientView.Items[cnt].Text, _deny_tim);
-                    else
-                        Front.AddKickUser(clientView.Items[cnt].SubItems[Front.clmCV_IP_IDX].Text, _deny_tim);
+                    //if (clmClientViewIP.DisplayIndex == 0)
+                    _k.Status.AddKick(clientView.Items[cnt].SubItems[clmClientViewIP.DisplayIndex].Text, _deny_tim);
 
-                    //GUI表示用KickItemに未登録なら登録する
-                    lock (_k.Status.Gui.KickItem)
-                    {
-                        int cnt2;
-                        for (cnt2 = 0; cnt2 < _k.Status.Gui.KickItem.Count; cnt2++)
-                        {
-                            if (clmKickViewIP.DisplayIndex == 0)
-                            {
-                                if (_k.Status.Gui.KickItem[cnt2].Text == clientView.Items[cnt].Text)
-                                    break;
-                            }
-                            else
-                            {
-                                if (_k.Status.Gui.KickItem[cnt2].SubItems[clmKickViewIP.DisplayIndex].Text == clientView.Items[cnt].SubItems[Front.clmCV_IP_IDX].Text)
-                                    break;
-                            }
-                        }
-                        if (cnt2 >= _k.Status.Gui.KickItem.Count)
-                        {
-                            if (Front.clmCV_IP_IDX == 0)
-                                _k.Status.AddKick(clientView.Items[cnt].Text, 0);
-                            else
-                                _k.Status.AddKick(clientView.Items[cnt].SubItems[Front.clmCV_IP_IDX].Text, 0);
-                        }
-                    }
-                    //接続中なら強制切断
-                    if (clientView.Items[cnt].Selected)
-                    {
-                        if (Front.clmCV_ID_IDX == 0)
-                            _k.Status.Client.Disc(clientView.Items[cnt].Text);
-                        else
-                            _k.Status.Client.Disc(clientView.Items[cnt].SubItems[Front.clmCV_ID_IDX].Text);
-                    }
+
                 }
             }
             catch (Exception ex)
@@ -2207,19 +2608,21 @@ namespace Kagamin2
             try
             {
                 //選択中の全クライアントをリザーブ登録
-                lock(_k.Status.Gui.ClientItem)
+                lock (_k.Status.Gui.ClientItem)
+                {
                     foreach (ListViewItem _item in _k.Status.Gui.ClientItem)
+                    {
                         if (_item.Selected)
-                            if (Front.clmCV_IP_IDX == 0)
-                            {
+                        {
+                            _item.SubItems[0].ForeColor = System.Drawing.Color.Blue;
+                            if (clmClientViewIP.DisplayIndex == 0)
                                 _k.Status.AddReserve(_item.Text);
-                                AuditReserve(_k, _item.Text);
-                            }
                             else
-                            {
-                                _k.Status.AddReserve(_item.SubItems[Front.clmCV_IP_IDX].Text);
-                                AuditReserve(_k, _item.SubItems[Front.clmCV_IP_IDX].Text);
-                            }
+                                _k.Status.AddReserve(_item.SubItems[clmClientViewIP.DisplayIndex].Text);
+
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -2239,7 +2642,7 @@ namespace Kagamin2
             switch (_tsmi.Name)
             {
                 case "ClientIPCopyMenu":
-                    if (Front.clmCV_IP_IDX == 0)
+                    if (clmClientViewIP.DisplayIndex == 0)
                     {
                         foreach (ListViewItem _item in clientView.Items)
                             if (_item.Selected)
@@ -2249,7 +2652,7 @@ namespace Kagamin2
                     {
                         foreach (ListViewItem _item in clientView.Items)
                             if (_item.Selected)
-                                copy_string += _item.SubItems[Front.clmCV_IP_IDX].Text + Environment.NewLine;
+                                copy_string += _item.SubItems[clmClientViewIP.DisplayIndex].Text + Environment.NewLine;
                     }
                     break;
                 case "KickIPCopyMenu":
@@ -2286,32 +2689,6 @@ namespace Kagamin2
             if (copy_string.Length > Environment.NewLine.Length)
                 copy_string = copy_string.Remove(copy_string.Length - Environment.NewLine.Length); // 余計な末尾の改行消し
             Clipboard.SetText(copy_string);
-        }
-        /// <summary>
-        /// ドメイン解決有効/無効切り替え
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void ClientResolveHostMenu_Click(object sender, EventArgs e)
-        {
-            Front.Opt.EnableResolveHost = ClientResolveHostMenu.Checked;
-            int _target = Front.Opt.EnableResolveHost ? Front.clmCV_HO_IDX : Front.clmCV_IP_IDX;
-            // 全鏡のクライアントリスト上のFront.clmCV_IH_IDXカラム内の値を
-            // _targetカラムの値に書き換える
-            lock (Front.KagamiList)
-                foreach (Kagami _k in Front.KagamiList)
-                    lock (_k.Status.Gui.ClientItem)
-                        if (Front.clmCV_IH_IDX == 0)
-                            // clmCV_IH_IDX==0なら_targe==0はありえない
-                            foreach (ListViewItem _item in _k.Status.Gui.ClientItem)
-                                _item.Text = _item.SubItems[_target].Text;
-                        else if (_target == 0)
-                            // _targe==0ならclmCV_IH_IDX==0はありえない
-                            foreach (ListViewItem _item in _k.Status.Gui.ClientItem)
-                                _item.SubItems[Front.clmCV_IH_IDX].Text = _item.Text;
-                        else
-                            foreach (ListViewItem _item in _k.Status.Gui.ClientItem)
-                                _item.SubItems[Front.clmCV_IH_IDX].Text = _item.SubItems[_target].Text;
         }
         #endregion
 
@@ -2368,6 +2745,130 @@ namespace Kagamin2
                     }
                 }
             }
+        }
+
+        private void AddReserveMenuItem_Click(object sender, EventArgs e)
+        {
+            //後ろから順にReserveItemを削除
+            Kagami _k = this.SelectedKagami;
+            if (_k != null)
+            {
+                lock (_k.Status.Gui.ReserveItem)
+                {
+                    if (reserveView.SelectedItems.Count == 0)
+                    {//選択がない場合はテキストボックスに入力されてる文字列を登録
+                        //ホストも登録できるように
+                        if (!Front.Gui.ReserveList.Contains(addResvHost.Text))
+                        {
+                            // 右クリックメニューに反映
+                            ToolStripMenuItem _tsmi = new ToolStripMenuItem();
+                            _tsmi.Text = addResvHost.Text;
+                            _tsmi.Click += PasteReserveURL;
+
+                            FavReserveMenuItem.DropDownItems.Add(_tsmi);
+                            Front.Gui.ReserveList.Add(addResvHost.Text);
+
+
+                        }
+                    }
+                    for (int cnt = reserveView.Items.Count - 1; cnt >= 0; cnt--)
+                    {
+                        if (reserveView.Items[cnt].Selected)
+                        {
+                            ListViewItem _item = reserveView.Items[cnt];
+
+                            if (Front.Gui.ReserveList.Contains(_item.Text))
+                                continue;
+
+                            // 右クリックメニューに反映
+                            ToolStripMenuItem _tsmi = new ToolStripMenuItem();
+                            _tsmi.Text = _item.Text;
+                            _tsmi.Click += PasteReserveURL;
+                            _tsmi.Name = _tsmi.Text;
+                            FavReserveMenuItem.DropDownItems.Add(_tsmi);
+                            Front.Gui.ReserveList.Add(_item.Text);
+                        }
+                    }
+                }
+
+            }
+            //GUI上のリストをReserveItemにあわせる
+            myPort_StateChanged();
+
+            Front.SaveSetting();
+        }
+
+        private void DelReserveMenuItem_Click(object sender, EventArgs e)
+        {
+            //後ろから順にReserveItemを削除
+            Kagami _k = this.SelectedKagami;
+            if (_k != null)
+            {
+                lock (_k.Status.Gui.ReserveItem)
+                {
+                    if (reserveView.SelectedItems.Count == 0)
+                    {
+                        if (Front.Gui.ReserveList.Contains(addResvHost.Text))
+                        {
+                            foreach (object _obj in FavReserveMenuItem.DropDownItems)
+                            {
+                                ToolStripMenuItem _tsmi;
+                                try
+                                {
+                                    _tsmi = (ToolStripMenuItem)_obj;
+                                }
+                                catch
+                                {
+                                    continue;
+                                }
+                                if (_tsmi.Text == addResvHost.Text)
+                                {
+                                    FavReserveMenuItem.DropDownItems.Remove(_tsmi);
+                                    break;
+                                }
+                            }
+
+                            Front.Gui.ReserveList.Remove(addResvHost.Text);
+                        }
+                    }
+
+                    for (int cnt = reserveView.Items.Count - 1; cnt >= 0; cnt--)
+                    {
+                        if (reserveView.Items[cnt].Selected)
+                        {
+                            ListViewItem _item = reserveView.Items[cnt];
+
+                            if (Front.Gui.ReserveList.Contains(_item.Text))
+                            {
+                                foreach (object _obj in FavReserveMenuItem.DropDownItems)
+                                {
+                                    ToolStripMenuItem _tsmi;
+                                    try
+                                    {
+                                        _tsmi = (ToolStripMenuItem)_obj;
+                                    }
+                                    catch
+                                    {
+                                        continue;
+                                    }
+                                    if (_tsmi.Text == _item.Text)
+                                    {
+                                        FavReserveMenuItem.DropDownItems.Remove(_tsmi);
+                                        break;
+                                    }
+                                }
+
+                                Front.Gui.ReserveList.Remove(_item.Text);
+                            }
+                        }
+                    }
+                }
+
+            }
+            //GUI上のリストをReserveItemにあわせる
+            myPort_StateChanged();
+
+            Front.SaveSetting();
         }
 
         /// <summary>
@@ -2429,13 +2930,14 @@ namespace Kagamin2
             {
                 if (reserveView.Items[cnt].Selected)
                 {
-                    //ReserveViewRClick.Enabled = true;
+                    ReserveViewRClick.Enabled = true;
                     ResvDelMenu.Enabled = true;
                     ResvIPCopyMenu.Enabled = true;
                     return;
                 }
             }
             //ReserveViewRClick.Enabled = false;
+            FavReserveMenuItem.Enabled = true;
             ResvDelMenu.Enabled = false;
             ResvIPCopyMenu.Enabled = false;
             return;
@@ -2462,15 +2964,30 @@ namespace Kagamin2
                             // ReserveItemから削除
                             if (_k.Status.Gui.ReserveItem.Contains(_item))
                             {
+                                lock (_k.Status.Gui.ClientItem)
+                                {
+                                    foreach (ListViewItem _item1 in _k.Status.Gui.ClientItem)
+                                    {
+                                        if (clmClientViewIP.DisplayIndex == 0)
+                                        {
+                                            if (_item1.Text == _item.Text)
+                                                _item1.SubItems[0].ForeColor = System.Drawing.Color.Empty;
+                                        }
+                                        else
+                                        {
+                                            if (_item1.SubItems[clmClientViewIP.DisplayIndex].Text == _item.Text)
+                                                _item1.SubItems[0].ForeColor = System.Drawing.Color.Empty;
+                                        }
+                                    }
+
+                                }
                                 _k.Status.Gui.ReserveItem.Remove(_item);
-                                if (clmResvViewIP.DisplayIndex == 0)
-                                    AuditReserve(_k, _item.Text);
-                                else
-                                    AuditReserve(_k, _item.SubItems[clmResvViewIP.DisplayIndex].Text);
+
                             }
                         }
                     }
                 }
+
             }
             //GUI上のリストをReserveItemにあわせる
             myPort_StateChanged();
@@ -2485,70 +3002,42 @@ namespace Kagamin2
         {
             if (_k == null)
                 return;
+            if (_k.Status.Gui.ReserveItem.Count == 0)
+                return;
 
-            //ClientViewの更新も行うのでReserve登録0でも続行
-            //if (_k.Status.Gui.ReserveItem.Count == 0)
-            //    return;
-
-            int r_cnt = 0; // リザーブリスト上での該当IP数
-            int c_cnt = 0; // クライアントリスト上での該当IP数
-
-            lock (_k.Status.Gui.ReserveItem)
+            // まず対象IPがクライアントリストに何個存在するかチェック
+            int c_cnt = 0;
             lock (_k.Status.Gui.ClientItem)
             {
-                // 対象IPがリザーブリストに何個存在するかチェック
-                if (clmResvViewIP.DisplayIndex == 0)
+                foreach (ListViewItem _item in _k.Status.Gui.ClientItem)
                 {
-                    foreach (ListViewItem _item in _k.Status.Gui.ReserveItem)
-                        if (_item.Text == _ip)
-                            r_cnt++;
-                }
-                else
-                {
-                    foreach (ListViewItem _item in _k.Status.Gui.ReserveItem)
-                        if (_item.SubItems[clmResvViewIP.DisplayIndex].Text == _ip)
-                            r_cnt++;
-                }
-                
-
-                // 対象IPがクライアントリストに何個存在するかチェック
-                // r_cntの値分、見つかった_itemを赤文字にする
-                if (Front.clmCV_IP_IDX == 0)
-                {
-                    foreach (ListViewItem _item in _k.Status.Gui.ClientItem)
+                    if (clmClientViewIP.DisplayIndex == 0)
+                    {
                         if (_item.Text == _ip)
                         {
                             c_cnt++;
-                            if (r_cnt > 0)
-                            {
-                                r_cnt--;
-                                _item.SubItems[0].ForeColor = System.Drawing.Color.LimeGreen;
-                            }
-                            else
-                            {
-                                _item.SubItems[0].ResetStyle();
-                            }
                         }
-                }
-                else
-                {
-                    foreach (ListViewItem _item in _k.Status.Gui.ClientItem)
-                        if (_item.SubItems[Front.clmCV_IP_IDX].Text == _ip)
+                    }
+                    else
+                    {
+                        if (_item.SubItems[clmClientViewIP.DisplayIndex].Text == _ip)
                         {
                             c_cnt++;
-                            if (r_cnt > 0)
-                            {
-                                r_cnt--;
-                                _item.SubItems[0].ForeColor = System.Drawing.Color.LimeGreen;
-                            }
-                            else
-                            {
-                                _item.SubItems[0].ResetStyle();
-                            }
                         }
-                }
-                
+                    }
+                    lock (_k.Status.Gui.ReserveItem)
+                    {
+                        foreach (ListViewItem _item1 in _k.Status.Gui.ReserveItem)
+                        {
+                            if (_item.SubItems[clmClientViewIP.DisplayIndex].Text == _item1.Text)
+                                _item.SubItems[0].ForeColor = System.Drawing.Color.Blue;
+                        }
 
+                    }
+                }
+            }
+            lock (_k.Status.Gui.ReserveItem)
+            {
                 // 対象IPの接続数分○に設定し、
                 // それ以降は全て×にする
                 foreach (ListViewItem _item in _k.Status.Gui.ReserveItem)
@@ -2558,7 +3047,7 @@ namespace Kagamin2
                         if (c_cnt > 0)
                         {
                             _item.SubItems[1].Text = "○";  // clmResvViewStatus
-                            _item.SubItems[0].ForeColor = System.Drawing.Color.LimeGreen;
+                            _item.SubItems[0].ForeColor = System.Drawing.Color.LightGreen;
                             c_cnt--;
                         }
                         else
@@ -2571,9 +3060,14 @@ namespace Kagamin2
             }
             // ついでにリザーブ登録有りでKick対象に登録されてたら解除する
             if (c_cnt > 0)
-                lock (Front.KickList)
-                    if (Front.KickList.ContainsKey(_ip))
-                        Front.KickList[_ip] = DateTime.Now.AddSeconds(Front.Kick.KickDenyTime).ToString() + ",1";
+                lock (_k.Status.Kick)
+                    if (_k.Status.Kick.ContainsKey(_ip))
+                    {
+                        _k.Status.Kick[_ip].KickFlag = false;
+                        _k.Status.Kick[_ip].DenyEndTime = 0;
+                        _k.Status.Kick[_ip].Cnt = 0;
+
+                    }
         }
 
         #endregion
@@ -2608,7 +3102,14 @@ namespace Kagamin2
                 {
                     // kickViewに未登録のアイテムで通知してきたら新規登録
                     // 登録済みアイテムの通知ならカウントを＋１インクリメントする
-                    if (!kickView.Items.Contains(_ke.Item))
+                    if (_ke.Mode == 2)
+                    {
+
+                        kickView.Items.Clear();
+
+
+                    }
+                    else if (!kickView.Items.Contains(_ke.Item))
                     {
                         //新規登録
                         if (!kickView.IsDisposed)
@@ -2616,12 +3117,15 @@ namespace Kagamin2
                     }
                     else
                     {
+                        /*
+                        
                         //カウンタインクリメント
                         if (clmKickViewCount.DisplayIndex == 0)
                             _ke.Item.Text = (int.Parse(_ke.Item.Text) + 1).ToString();
                         else
                             _ke.Item.SubItems[clmKickViewCount.DisplayIndex].Text
                                 = (int.Parse(_ke.Item.SubItems[clmKickViewCount.DisplayIndex].Text) + 1).ToString();
+                    */
                     }
                 }
             }
@@ -2647,7 +3151,7 @@ namespace Kagamin2
             {
                 //キック追加
                 System.Net.IPAddress hostadd = System.Net.Dns.GetHostAddresses(addKickHost.Text)[0];
-                _k.Status.AddKick(hostadd.ToString(),0);
+                _k.Status.AddKick(hostadd.ToString(), 0, true);
                 //表示更新
                 addKickHost.Text = "";
                 myPort_StateChanged();
@@ -2657,6 +3161,13 @@ namespace Kagamin2
                 MessageBox.Show("ホスト名からIPアドレスに変換できませんでした", "DNS Error", MessageBoxButtons.OK);
             }
         }
+        /*
+        public void SetKick(string ip, Kagami k)
+        {
+            k.Status.AddKick(ip, 0);
+            myPort_StateChanged();
+            Front.AddKickUser(ip, -1);
+        }*/
 
         /// <summary>
         /// キック登録ホスト入力欄でキー入力した時
@@ -2720,11 +3231,20 @@ namespace Kagamin2
                 {
                     if (kickView.Items[cnt].Selected == true)
                     {
+                        //リザーブに登録されている場合削除
                         if (clmKickViewIP.DisplayIndex == 0)
-                            Front.AddKickUser(kickView.Items[cnt].Text, _deny_tim);
+                        {
+                            _k.Status.RemoveReserve(kickView.Items[cnt].Text);
+                            _k.Status.AddKick(kickView.Items[cnt].Text, _deny_tim);
+                        }
                         else
-                            Front.AddKickUser(kickView.Items[cnt].SubItems[clmKickViewIP.DisplayIndex].Text, _deny_tim);
+                        {
+                            _k.Status.AddKick(kickView.Items[cnt].SubItems[clmKickViewIP.DisplayIndex].Text, _deny_tim);
+                            _k.Status.RemoveReserve(kickView.Items[cnt].Text);
+                        }
                     }
+
+
                 }
             }
             catch (Exception ex)
@@ -2751,12 +3271,12 @@ namespace Kagamin2
                     case "KickSelDelMenu":  // 選択中のKick解除
                         for (int cnt = kickView.Items.Count - 1; cnt >= 0; cnt--)
                             if (kickView.Items[cnt].Selected == true)
-                                Front.DelKickUser(kickView.Items[cnt].SubItems[clmKickViewIP.Index].Text);
+                                _k.Status.DelKick(kickView.Items[cnt].SubItems[clmKickViewIP.Index].Text);
                         break;
 
                     case "KickAllDelMenu":  // すべてのKick解除
                         for (int cnt = kickView.Items.Count - 1; cnt >= 0; cnt--)
-                            Front.DelKickUser(kickView.Items[cnt].SubItems[clmKickViewIP.Index].Text);
+                            _k.Status.DelKick(kickView.Items[cnt].SubItems[clmKickViewIP.Index].Text);
                         break;
 
                     case "KickSelDelClearMenu": // 選択中のKick解除＋クリア
@@ -2765,9 +3285,9 @@ namespace Kagamin2
                             if (kickView.Items[cnt].Selected == true)
                             {
                                 if (clmKickViewIP.DisplayIndex == 0)
-                                    Front.DelKickUser(kickView.Items[cnt].Text);
+                                    _k.Status.DelKick(kickView.Items[cnt].Text);
                                 else
-                                    Front.DelKickUser(kickView.Items[cnt].SubItems[clmKickViewIP.DisplayIndex].Text);
+                                    _k.Status.DelKick(kickView.Items[cnt].SubItems[clmKickViewIP.DisplayIndex].Text);
                                 lock (_k.Status.Gui.KickItem)
                                 {
                                     for (int cnt2 = _k.Status.Gui.KickItem.Count - 1; cnt2 >= 0; cnt2--)
@@ -2793,9 +3313,9 @@ namespace Kagamin2
                         for (int cnt = kickView.Items.Count - 1; cnt >= 0; cnt--)
                         {
                             if (clmKickViewIP.DisplayIndex == 0)
-                                Front.DelKickUser(kickView.Items[cnt].Text);
+                                _k.Status.DelKick(kickView.Items[cnt].Text);
                             else
-                                Front.DelKickUser(kickView.Items[cnt].SubItems[clmKickViewIP.DisplayIndex].Text);
+                                _k.Status.DelKick(kickView.Items[cnt].SubItems[clmKickViewIP.DisplayIndex].Text);
                         }
                         _k.Status.Gui.KickItem.Clear();
                         kickView.Items.Clear();
@@ -2898,6 +3418,55 @@ namespace Kagamin2
             // 特に何もせずメニューを表示
         }
         /// <summary>
+        /// 右クリックメニューで「この行のログをコピー」を選択
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void LogCopyMenuItem_Click(object sender, EventArgs e)
+        {
+            if (logView.SelectedItems.Count == 0)
+                return;
+            ListViewItem _item = logView.SelectedItems[0];
+            try
+            {
+                Clipboard.SetText(_item.Text + " " + _item.SubItems[1].Text);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("クリップボードにコピーできませんでした。クリップボードがロックされている可能性があります。\r\n+理由:" + ex.Message + "\r\n" + ex.StackTrace, "コピーエラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        /// <summary>
+        /// 右クリックメニューで「この行のIPをコピー」を選択
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void LogIPCopyMenuItem_Click(object sender, EventArgs e)
+        {
+            if (logView.SelectedItems.Count == 0)
+                return;
+            ListViewItem _item = logView.SelectedItems[0];
+
+            //IPアドレスらしきものを検索
+            Match index = Regex.Match(_item.SubItems[1].Text, @"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}");
+            if (index.Success)
+            {
+                try
+                {
+                    Clipboard.SetText(index.Value);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("クリップボードにコピーできませんでした。クリップボードがロックされている可能性があります。\r\n+理由:" + ex.Message + "\r\n" + ex.StackTrace, "コピーエラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            else
+            {
+                MessageBox.Show("IPが含まれていません", "ログコピー", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        /// <summary>
         /// 右クリックメニューで「このポートのログクリア」を選択
         /// </summary>
         /// <param name="sender"></param>
@@ -2940,434 +3509,521 @@ namespace Kagamin2
         /// <param name="e"></param>
         private void timer1_Tick(object sender, EventArgs e)
         {
-            int _tmp_port_num = 0;
-            Kagami _k;
-
-            #region 左パネルの更新
-            // kagamiView更新/上部ボタンAUDIT/ステータスバーAUDITはLeftFlagがONの時のみ行う
-            if (LeftFlag)
+            try
             {
-                LeftFlag = false;
-                #region kagamiViewの更新
-                kagamiView.BeginUpdate();
-                kagamiView.Items.Clear();
-                lock (Front.KagamiList)
+                int _tmp_port_num = 0;
+                Kagami _k;
+
+                #region 左パネルの更新
+                // kagamiView更新/上部ボタンAUDIT/ステータスバーAUDITはLeftFlagがONの時のみ行う
+                if (LeftFlag)
                 {
-                    foreach (Kagami _k_tmp in Front.KagamiList)
+                    #region kagamiViewの更新
+                    kagamiView.BeginUpdate();
+                    kagamiView.Items.Clear();
+                    lock (Front.KagamiList)
                     {
-                        // ImportURLを再設定
-                        if (clmKgmViewImport.DisplayIndex == 0)
-                            _k_tmp.Status.Gui.KagamiItem.Text = _k_tmp.Status.ImportURL;
-                        else
-                            _k_tmp.Status.Gui.KagamiItem.SubItems[clmKgmViewImport.DisplayIndex].Text = _k_tmp.Status.ImportURL;
+                        foreach (Kagami _k_tmp in Front.KagamiList)
+                        {
+                            if (clmKgmViewImport.DisplayIndex == 0)
+                                _k_tmp.Status.Gui.KagamiItem.Text = _k_tmp.Status.ImportURL;
+                            else
+                                _k_tmp.Status.Gui.KagamiItem.SubItems[clmKgmViewImport.DisplayIndex].Text = _k_tmp.Status.ImportURL;
 
-                        // ポート毎接続制限中ならポート番号を赤文字にする
-                        if (_k_tmp.Status.Pause)
-                            _k_tmp.Status.Gui.KagamiItem.SubItems[clmKgmViewPort.DisplayIndex].ForeColor = System.Drawing.Color.Red;
-                        else
-                            _k_tmp.Status.Gui.KagamiItem.SubItems[clmKgmViewPort.DisplayIndex].ResetStyle();
+                            // ポート毎接続制限中ならポート番号を赤文字にする
+                            if (_k_tmp.Status.Pause)
+                                _k_tmp.Status.Gui.KagamiItem.SubItems[clmKgmViewPort.DisplayIndex].ForeColor = System.Drawing.Color.Red;
+                            else
+                                _k_tmp.Status.Gui.KagamiItem.SubItems[clmKgmViewPort.DisplayIndex].ResetStyle();
 
-                        // 待機中ポート＆帯域制限停止時は最大接続数をユーザ定義値に再設定
-                        if (!_k_tmp.Status.ImportStatus || BandTh == null || !BandTh.IsAlive)
-                            _k_tmp.Status.Connection = _k_tmp.Status.Conn_UserSet;
+                            if (!_k_tmp.Status.ImportStatus)
+                                _k_tmp.Status.Connection = _k_tmp.Status.Conn_UserSet;
 
-                        // 接続者数を再設定
-                        if (clmKgmViewConn.DisplayIndex == 0)
-                            _k_tmp.Status.Gui.KagamiItem.Text = _k_tmp.Status.Client.Count + "/" + _k_tmp.Status.Connection + "+" + _k_tmp.Status.Reserve;
-                        else
-                            _k_tmp.Status.Gui.KagamiItem.SubItems[clmKgmViewConn.DisplayIndex].Text = _k_tmp.Status.Client.Count + "/" + _k_tmp.Status.Connection + "+" + _k_tmp.Status.Reserve;
+                            if (clmKgmViewConn.DisplayIndex == 0)
+                                _k_tmp.Status.Gui.KagamiItem.Text = _k_tmp.Status.Client.Count + "/" + _k_tmp.Status.Connection + "+" + _k_tmp.Status.Reserve;
+                            else
+                                _k_tmp.Status.Gui.KagamiItem.SubItems[clmKgmViewConn.DisplayIndex].Text = _k_tmp.Status.Client.Count + "/" + _k_tmp.Status.Connection + "+" + _k_tmp.Status.Reserve;
 
-                        kagamiView.Items.Add(_k_tmp.Status.Gui.KagamiItem);
-                        if (_k_tmp.Status.ImportURL != "待機中")
-                            _tmp_port_num++;
+                            kagamiView.Items.Add(_k_tmp.Status.Gui.KagamiItem);
+                            if (_k_tmp.Status.ImportURL != "待機中")
+                                _tmp_port_num++;
+                        }
                     }
-                }
-                kagamiView.EndUpdate();
+                    kagamiView.EndUpdate();
+                    #endregion
+
+                    // 接続・切断ボタン状態AUDIT
+                    ButtonAudit();
+
+                    // Web上から設定が変更された場合用
+                    // Pauseボタン & 帯域制限ボタンOnOff状態AUDIT
+                    statusBarAudit();
+
+                    // インポート接続数(クライアント数じゃないよ)が変化したらTaskTrayTip表示
+                    if (LastActPortNum != _tmp_port_num)
+                    {
+                        LastActPortNum = _tmp_port_num;
+                        if (TaskTrayIcon.Visible)
+                            showTaskTrayTip();
+                    }
+                    LeftFlag = false;
+                }// end of if(LeftFlag)
+
+                // monAllViewは常に更新
+                monAllViewUpdate();
+
+                // StatusBarのEX,IM,CPU使用率も常に更新
+                statusBarUpdate();
                 #endregion
 
-                // 接続・切断ボタン状態AUDIT
-                ButtonAudit();
-
-                // Web上から設定が変更された場合用
-                // Pauseボタン & 帯域制限ボタンOnOff状態AUDIT
-                statusBarAudit();
-
-                // インポート接続数(クライアント数じゃないよ)が変化したらTaskTrayTip表示
-                if (LastActPortNum != _tmp_port_num)
-                {
-                    LastActPortNum = _tmp_port_num;
-                    if (TaskTrayIcon.Visible)
-                        showTaskTrayTip();
+                #region 右パネルの更新
+                // RightPanelは選択中タブ内のフォームのみ更新
+                _k = this.SelectedKagami;
+                if (_k != null)
+                {// 選択中ポートで鏡起動中
+                    switch (tabKagami.SelectedTab.Text)
+                    {
+                        case "モニタ":
+                            monViewUpdate(_k);
+                            break;
+                        case "クライアント":
+                            if (_k.Status.Gui.ClientItem.Count > 0)
+                            {
+                                clientView.BeginUpdate();
+                                _k.Status.Client.UpdateClientTime();
+                                clientView.EndUpdate();
+                            }
+                            break;
+                        case "リザーブ":
+                            break;
+                        case "キック":
+                            if (_k.Status.Gui.KickItem.Count > 0)
+                            {
+                                kickView.BeginUpdate();
+                                _k.Status.Client.UpdateKickTime();
+                                kickView.EndUpdate();
+                            }
+                            break;
+                        case "ログ":
+                            break;
+                        case "プレビュー":
+                            break;
+                        default:
+                            throw new Exception("not implemented.");
+                    }
                 }
-            }// end of if(LeftFlag)
-
-            // monAllViewは常に更新
-            monAllViewUpdate();
-
-            // StatusBarのEX,IM,CPU使用率も常に更新
-            statusBarUpdate();
-            #endregion
-
-            #region 右パネルの更新
-            // RightPanelは選択中タブ内のフォームのみ更新
-            _k = this.SelectedKagami;
-            if (_k != null)
-            {// 選択中ポートで鏡起動中
-                switch (tabKagami.SelectedTab.Text)
-                {
-                    case "モニタ":
-                        monViewUpdate(_k);
-                        break;
-                    case "クライアント":
-                        if (_k.Status.Gui.ClientItem.Count > 0)
-                        {
-                            clientView.BeginUpdate();
-                            _k.Status.Client.UpdateClientTime();
-                            clientView.EndUpdate();
-                        }
-                        break;
-                    case "リザーブ":
-                        break;
-                    case "キック":
-                        if (_k.Status.Gui.KickItem.Count > 0)
-                        {
-                            kickView.BeginUpdate();
-                            _k.Status.Client.UpdateKickTime();
-                            kickView.EndUpdate();
-                        }
-                        break;
-                    case "ログ":
-                        break;
-                    default:
-                        throw new Exception("not implemented.");
+                else
+                {// 選択中ポートで鏡未起動
                 }
-            }
-            else
-            {// 選択中ポートで鏡未起動
-            }
-            #endregion
+                #endregion
 
-            #region アプリケーションの自動終了
-            if (EnableAutoExit && LastActPortNum == 0)
-            {
-                //TaskTrayから復帰
-                this.Visible = true;
-                if (this.WindowState == FormWindowState.Minimized)
-                    this.WindowState = FormWindowState.Normal;
-                this.Activate();
-                this.TaskTrayIcon.Visible = false;
-                AskFormClose = false;
-                timer1.Stop();
-                this.Close();
-                return;
-            }
-            #endregion
-
-            #region 自動シャットダウン
-            if (EnableAutoShutdown && LastActPortNum == 0 && ExecShutdown == false)
-            {
-                //TaskTrayから復帰
-                this.Visible = true;
-                if (this.WindowState == FormWindowState.Minimized)
-                    this.WindowState = FormWindowState.Normal;
-                this.Activate();
-                this.TaskTrayIcon.Visible = false;
-                //shutdown中止用ボタンに変更
-                toolStripAutoShutdown.BorderStyle = Border3DStyle.Raised; // 凸ボタン
-                toolStripAutoShutdown.Text = "電断中止";
-                ExecShutdown = true;
-                AskFormClose = false;
-                //Shutdown.exe起動
-                ProcessStartInfo psInfo = new ProcessStartInfo();
-                psInfo.FileName = "shutdown.exe";
-                psInfo.CreateNoWindow = true;
-                psInfo.UseShellExecute = false;
-                psInfo.Arguments = "-s -f -c \"かがみん2からのシャットダウン要求...\"";
-                try
+                #region アプリケーションの自動終了
+                if (EnableAutoExit && LastActPortNum == 0)
                 {
-                    Process.Start(psInfo);
+                    //TaskTrayから復帰
+                    this.Visible = true;
+                    if (this.WindowState == FormWindowState.Minimized)
+                        this.WindowState = FormWindowState.Normal;
+                    this.Activate();
+                    this.TaskTrayIcon.Visible = false;
+                    AskFormClose = false;
+                    timer1.Stop();
+                    this.Close();
+                    return;
                 }
-                catch
-                {
-                    MessageBox.Show("shutdown.exeの実行に失敗しました.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    //shutdown開始用ボタンに変更
-                    toolStripAutoShutdown.BorderStyle = Border3DStyle.Raised;
-                    toolStripAutoShutdown.Text = "自動電断";
-                    ExecShutdown = false;
-                    EnableAutoShutdown = false;
-                    AskFormClose = true;
-                    statusBarAudit();
-                }
-            }
-            #endregion
+                #endregion
 
-            #region 長時間インポート自動切断＋少クライアント数自動切断
-            if (Front.Acl.ImportOutTime > 0 || Front.Acl.ClientOutCheck)
-            {
-                bool empty_port = false; // 空きポートなし
+                #region 自動シャットダウン
+                if (EnableAutoShutdown && LastActPortNum == 0 && ExecShutdown == false)
+                {
+                    //TaskTrayから復帰
+                    this.Visible = true;
+                    if (this.WindowState == FormWindowState.Minimized)
+                        this.WindowState = FormWindowState.Normal;
+                    this.Activate();
+                    this.TaskTrayIcon.Visible = false;
+                    //shutdown中止用ボタンに変更
+                    toolStripAutoShutdown.BorderStyle = Border3DStyle.Raised; // 凸ボタン
+                    toolStripAutoShutdown.Text = "電断中止";
+                    ExecShutdown = true;
+                    AskFormClose = false;
+                    //Shutdown.exe起動
+                    ProcessStartInfo psInfo = new ProcessStartInfo();
+                    psInfo.FileName = "shutdown.exe";
+                    psInfo.CreateNoWindow = true;
+                    psInfo.UseShellExecute = false;
+                    psInfo.Arguments = "-s -f -c \"かがみん2からのシャットダウン要求...\"";
+                    try
+                    {
+                        Process.Start(psInfo);
+                    }
+                    catch
+                    {
+                        MessageBox.Show("shutdown.exeの実行に失敗しました.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        //shutdown開始用ボタンに変更
+                        toolStripAutoShutdown.BorderStyle = Border3DStyle.Raised;
+                        toolStripAutoShutdown.Text = "自動電断";
+                        ExecShutdown = false;
+                        EnableAutoShutdown = false;
+                        AskFormClose = true;
+                        statusBarAudit();
+                    }
+                }
+                #endregion
+
+                #region 制限関連
+
+                bool _tmp = false;
+                bool _suc;
+                #region MAX人数履歴
                 lock (Front.KagamiList)
                 {
                     foreach (Kagami _k_tmp in Front.KagamiList)
                     {
-                        // 正常に接続できていないポートは対象外
                         if (!_k_tmp.Status.ImportStatus)
-                        {
-                            empty_port = true; // 空きポート有り
                             continue;
-                        }
+                        _tmp = true;
+                        if (_k_tmp.Status.ConnectionMax < _k_tmp.Status.Client.Count)
+                            _k_tmp.Status.ConnectionMax = _k_tmp.Status.Client.Count;
 
-                        // 内側接続は対象外
-                        if (_k_tmp.Status.Type == 0)
-                            continue;
-
-                        //Import制限時間オーバー
-                        if (Front.Acl.ImportOutTime > 0 && _k_tmp.Status.ImportTime.TotalMinutes >= Front.Acl.ImportOutTime)
+                    }
+                }
+                #endregion
+                #region UPnPポート閉鎖
+                if (!_tmp && Front.UPnPPort.Count > 0)
+                {
+                    lock (Front.UPnPPort)
+                    {
+                        foreach (int _port in Front.UPnPPort)
                         {
-                            if (!Front.Acl.PortFullOnlyCheck || !empty_port)
+#if !DEBUG
+                    _suc = JinkSoft.Utility.UPnP.UPnPClient.CloseFirewallPort(_port);
+#endif
+#if DEBUG
+                            _suc = JinkSoft.Utility.UPnP.UPnPClient.CloseFirewallPort("192.168.1.14", "192.168.1.4", _port);
+#endif
+                            try
                             {
-                                //インポート切断
-                                _k_tmp.Status.Disc();
-                                Front.AddLogData(1, _k_tmp.Status, "長時間インポート接続の制限時間に達したため外部待受状態に戻ります(接続時間:" + Front.Acl.ImportOutTime + "分)");
-                            }
-                        }
-
-                        //Client数が設定数より多くなったら時間リセット
-                        if (_k_tmp.Status.Client.Count > Front.Acl.ClientOutNum)
-                        {
-                            //設定者IPを含まない設定になっている場合
-                            if (Front.Acl.ClientNotIPCheck)
-                            {
-                                int num = 0;
-                                lock (_k_tmp.Status.Gui.ClientItem)
+                                Kagami _k_t = Front.IndexOf(_port);
+                                if (_k_t != null)
                                 {
-                                    for (int cnt = 0; cnt < _k_tmp.Status.Gui.ClientItem.Count; cnt++)
-                                    {
-                                        if (_k_tmp.Status.Gui.ClientItem[cnt].SubItems[Front.clmCV_IP_IDX].Text == _k_tmp.Status.SetUserIP)
-                                            num++;
-                                    }
+                                    if (_suc)
+
+                                        Front.AddLogData(1, _k_t.Status, "UPnPによりポートを閉鎖しました。(Port:" + _port.ToString() + ")");
+                                    else
+                                        Front.AddLogData(1, _k_t.Status, "UPnPによるポート閉鎖に失敗しました。(Port:" + _port.ToString() + ")");
+                                    Front.UPnPPort.Remove(_port);
+                                    break;
                                 }
-                                if (_k_tmp.Status.Client.Count - num > Front.Acl.ClientOutNum)
-                                    _k_tmp.Status.ClientTime = DateTime.Now;
                             }
-                            else
+                            catch
                             {
-                                _k_tmp.Status.ClientTime = DateTime.Now;
+
+                            }
+
+
+
+                        }
+                    }
+                }
+                #endregion
+                if (BandTh == null && Front.BndWth.EnableBandWidth)
+                {
+                    StartBandWidth();
+
+                }
+                if (BandTh != null && !Front.BndWth.EnableBandWidth)
+                {
+                    StopBandWidth();
+                }
+                #region 長時間インポート自動切断＆クライアント数制限
+                if (Front.Acl.ImportOutTime > 0 || Front.Acl.ClientOutCheck)
+                {
+                    bool empty_port = false; // 空きポートなし
+                    if (Front.Acl.PortFullOnlyCheck)
+                    {
+                        foreach (Kagami _k_temp in Front.KagamiList)
+                        {
+                            if (!_k_temp.Status.ImportStatus)
+                            {
+                                empty_port = true; // 空きポート有
+                            }
+
+                        }
+                    }
+                    lock (Front.KagamiList)
+                    {
+                        foreach (Kagami _k_tmp in Front.KagamiList)
+                        {
+                            // 正常に接続できていないポートは対象外
+                            if (!_k_tmp.Status.ImportStatus)
+                            {
+                                //empty_port = true; // 空きポート有
+                                continue;
+                            }
+                            // 内側接続は対象外
+                            if (_k_tmp.Status.Type == 0)
+                                continue;
+
+                            //Import制限時間オーバー
+                            if (Front.Acl.ImportOutTime > 0 && _k_tmp.Status.ImportTime.TotalMinutes >= Front.Acl.ImportOutTime)
+                            {
+                                if (!Front.Acl.PortFullOnlyCheck || !empty_port)
+                                {
+                                    //インポート切断
+                                    _k_tmp.Status.Disc();
+                                    Front.AddLogData(1, _k_tmp.Status, "長時間インポート接続の制限時間に達したため外部待受状態に戻ります(接続時間:" + Front.Acl.ImportOutTime + "分)");
+                                }
+                            }
+                            //Client数が設定数より多くなったら時間リセット
+                            if (_k_tmp.Status.Client.Count > Front.Acl.ClientOutNum)
+                            {
+                                //設定者IPを含まない設定になっている場合
+                                if (Front.Acl.ClientNotIPCheck)
+                                {
+                                    int num = 0;
+                                    lock (_k_tmp.Status.Gui.ClientItem)
+                                    {
+                                        for (int cnt = 0; cnt < _k_tmp.Status.Gui.ClientItem.Count; cnt++)
+                                        {
+                                            if (_k_tmp.Status.Gui.ClientItem[cnt].SubItems[1].Text == _k_tmp.Status.SetUserIP)      // clmClientViewIP
+                                                num++;
+                                        }
+                                    }
+                                    if (_k_tmp.Status.Client.Count - num > Front.Acl.ClientOutNum)
+                                        _k_tmp.Status.ClientTime = DateTime.Now;
+                                }
+                                else
+                                {
+                                    _k_tmp.Status.ClientTime = DateTime.Now;
+                                }
+                            }
+                            //時間が設定時間を越えると待ち受けに戻る
+                            if (Front.Acl.ClientOutCheck && (DateTime.Now - _k_tmp.Status.ClientTime).Minutes >= Front.Acl.ClientOutTime)
+                            {
+                                if (!Front.Acl.PortFullOnlyCheck || !empty_port)
+                                {
+                                    //インポート切断
+                                    _k_tmp.Status.Disc();
+                                    Front.AddLogData(1, _k.Status, "クライアント数制限の制限時間に達したため外部受付状態に戻ります(" + Front.Acl.ClientOutNum + "人以下/" + Front.Acl.ClientOutTime + "分)");
+                                }
                             }
                         }
-                        //時間が設定時間を越えると待ち受けに戻る
-                        if (Front.Acl.ClientOutCheck && (DateTime.Now - _k_tmp.Status.ClientTime).TotalMinutes >= Front.Acl.ClientOutTime)
+                    }
+                #endregion
+                }
+                /* */
+                #endregion
+                #region 時間指定スケジュールイベント
+                string _time = DateTime.Now.ToString("HH:mm");
+                bool _time_chg = false;
+                int _week = (int)DateTime.Now.DayOfWeek;
+                if (Time != _time)
+                {
+                    Time = _time;
+                    _time_chg = true;
+                    // 時刻00:00(=日付が変わったとき)
+                    if (_time == Front.Opt.ResetDayTime)
+                    {
+                        //MessageBox.Show("DayReset");
+                        // 月間トラヒックに退避して情報クリア
+                        Front.Log.TrsUpMon += Front.TotalUP;
+                        Front.Log.TrsDlMon += Front.TotalDL;
+                        Front.TotalUP = 0;
+                        Front.TotalDL = 0;
+                        Front.Log.TrsUpDay = 0;
+                        Front.Log.TrsDlDay = 0;
+                        if (DateTime.Now.Day == 1)
                         {
-                            if (!Front.Acl.PortFullOnlyCheck || !empty_port)
+                            // 毎月1日の00:00
+                            Front.Log.TrsUpMon = 0;
+                            Front.Log.TrsDlMon = 0;
+                        }
+                        // 転送量指定のイベント実行済みフラグをクリアする
+                        foreach (SCHEDULE _item in Front.ScheduleItem)
+                        {
+                            if (_item.StartType == 1)
                             {
-                                //インポート切断
-                                _k_tmp.Status.Disc();
-                                Front.AddLogData(1, _k_tmp.Status, "クライアント数制限の制限時間に達したため外部受付状態に戻ります(" + Front.Acl.ClientOutNum + "人以下/" + Front.Acl.ClientOutTime + "分)");
+                                switch (_item.TrfType)
+                                {
+                                    case 0:
+                                        _item.ExecTrf = false;
+                                        break;
+                                    case 1:
+                                    default:
+                                        if (DateTime.Now.Day == 1)
+                                            _item.ExecTrf = false;
+                                        break;
+                                }
                             }
                         }
                     }
                 }
-            }
-            /* */
-            #endregion
 
-            #region スケジュールイベント
-            string _time = DateTime.Now.ToString("HH:mm");
-            bool _time_chg = false;
-            int _week = (int)DateTime.Now.DayOfWeek;
-            if (Time != _time)
-            {
-                Time = _time;
-                _time_chg = true;
-                // 時刻00:00(=日付が変わったとき)
-                if (_time == "00:00")
+                // スケジュールイベントの総チェック
+                foreach (SCHEDULE _item in Front.ScheduleItem)
                 {
-                    // 月間トラヒックに退避して情報クリア
-                    Front.Log.TrsUpMon += Front.TotalUP;
-                    Front.Log.TrsDlMon += Front.TotalDL;
-                    Front.TotalUP = 0;
-                    Front.TotalDL = 0;
-                    Front.Log.TrsUpDay = 0;
-                    Front.Log.TrsDlDay = 0;
-                    if (DateTime.Now.Day == 1)
+                    // 無効スケジュールイベントはSkip
+                    if (_item.Enable == false)
+                        continue;
+
+                    // スケジュールイベントタイプでチェック内容分岐
+                    switch (_item.StartType)
                     {
-                        // 毎月1日の00:00
-                        Front.Log.TrsUpMon = 0;
-                        Front.Log.TrsDlMon = 0;
-                    }
-                    // 転送量指定のイベント実行済みフラグをクリアする
-                    foreach (SCHEDULE _item in Front.ScheduleItem)
-                    {
-                        if (_item.StartType == 1)
-                        {
+                        case 0: // イベントタイプ=時間指定
+                            // 時間変化していなければSkip
+                            if (_time_chg)
+                                continue;
+                            // 時間不一致はSkip
+                            string _start_time = _item.Hour.ToString("D2") + ":" + _item.Min.ToString("D2");
+                            if (Time != _start_time)
+                                continue;
+                            // 曜日チェック
+                            // 単一曜日指定で曜日不一致はSkip
+                            if (_item.Week < 7 && _item.Week != _week)
+                                continue;
+                            // 平日指定で土日はSkip
+                            if (_item.Week == 8 && (_week == 0 || _week >= 6))
+                                continue;
+                            // 土日指定で土日以外はSkip
+                            if (_item.Week == 9 && _week != 0 && _week != 6)
+                                continue;
+                            break;
+
+                        case 1: // イベントタイプ=転送量指定
+                            ulong _trf = (ulong)(_item.TrfValue * (_item.TrfUnit == 0 ? 1000 * 1000 : 1000 * 1000 * 1000));
+                            // イベント実行済みならSkip
+                            if (_item.ExecTrf)
+                                continue;
                             switch (_item.TrfType)
                             {
-                                case 0:
-                                    _item.ExecTrf = false;
+                                case 0: // 日間転送量
+                                    // 日間転送量がスケジュール設定値より小さければSkip
+                                    if (_trf > (Front.Log.TrsUpDay + Front.TotalUP))
+                                        continue;
                                     break;
-                                case 1:
+                                case 1: // 月間転送量
+                                    // 月間転送量がスケジュール設定値より小さければSkip
+                                    if (_trf > (Front.Log.TrsUpMon + Front.TotalUP))
+                                        continue;
+                                    break;
                                 default:
-                                    if (DateTime.Now.Day == 1)
-                                        _item.ExecTrf = false;
-                                    break;
+                                    continue;
                             }
-                        }
+                            _item.ExecTrf = true;
+                            break;
+
+                        default:
+                            continue;
                     }
-                    // 毎日0時に設定ファイル自動保存
-                    Front.SaveSetting();
-                }
-            }
-            
-            // スケジュールイベントの総チェック
-            foreach (SCHEDULE _item in Front.ScheduleItem)
-            {
-                // 無効スケジュールイベントはSkip
-                if (_item.Enable == false)
-                    continue;
+                    //
+                    // スケジュールに一致するアイテムを発見
+                    //
 
-                // スケジュールイベントタイプでチェック内容分岐
-                switch (_item.StartType)
-                {
-                    case 0: // イベントタイプ=時間指定
-                        // 時間変化していなければSkip
-                        if (_time_chg)
-                            continue;
-                        // 時間不一致はSkip
-                        string _start_time = _item.Hour.ToString("D2") + ":" + _item.Min.ToString("D2");
-                        if (Time != _start_time)
-                            continue;
-                        // 曜日チェック
-                        // 単一曜日指定で曜日不一致はSkip
-                        if (_item.Week < 7 && _item.Week != _week)
-                            continue;
-                        // 平日指定で土日はSkip
-                        if (_item.Week == 8 && (_week == 0 || _week >= 6))
-                            continue;
-                        // 土日指定で土日以外はSkip
-                        if (_item.Week == 9 && _week != 0 && _week != 6)
-                            continue;
-                        break;
+                    List<int> _port_list = new List<int>();
+                    if (_item.Port == 0)
+                        foreach (string s in myPort.Items)
+                            _port_list.Add(int.Parse(s));
+                    else
+                        _port_list.Add((int)_item.Port);
 
-                    case 1: // イベントタイプ=転送量指定
-                        ulong _trf = (ulong)(_item.TrfValue * (_item.TrfUnit == 0 ? 1000 * 1000 : 1000 * 1000 * 1000));
-                        // イベント実行済みならSkip
-                        if (_item.ExecTrf)
-                            continue;
-                        switch (_item.TrfType)
-                        {
-                            case 0: // 日間転送量
-                                // 日間転送量がスケジュール設定値より小さければSkip
-                                if (_trf > (Front.Log.TrsUpDay + Front.TotalUP))
-                                    continue;
-                                break;
-                            case 1: // 月間転送量
-                                // 月間転送量がスケジュール設定値より小さければSkip
-                                if (_trf > (Front.Log.TrsUpMon + Front.TotalUP))
-                                    continue;
-                                break;
-                            default:
-                                continue;
-                        }
-                        _item.ExecTrf = true;
-                        break;
+                    switch (Front.ScheduleEventString[_item.Event])
+                    {
+                        case "エントランスサーバー起動":
+                            if (Front.HPStart == false)
+                                toolStripHPStart_Click(sender, EventArgs.Empty);
+                            break;
 
-                    default:
-                        continue;
-                }
-                //
-                // スケジュールに一致するアイテムを発見
-                //
+                        case "エントランスサーバー停止":
+                            if (Front.HPStart == true)
+                                toolStripHPStart_Click(sender, EventArgs.Empty);
+                            break;
 
-                List<int> _port_list = new List<int>();
-                if (_item.Port == 0)
-                    foreach (string s in myPort.Items)
-                        _port_list.Add(int.Parse(s));
-                else
-                    _port_list.Add((int)_item.Port);
+                        case "新規受付開始":
+                            Front.Pause = false;
+                            break;
 
-                switch (Front.ScheduleEventString[_item.Event])
-                {
-                    case "エントランス起動":
-                        if (Front.HPStart == false)
-                            toolStripHPStart_Click(sender, EventArgs.Empty);
-                        break;
+                        case "新規受付停止":
+                            Front.Pause = true;
+                            break;
 
-                    case "エントランス停止":
-                        if (Front.HPStart == true)
-                            toolStripHPStart_Click(sender, EventArgs.Empty);
-                        break;
-
-                    case "新規受付開始":
-                        Front.Pause = false;
-                        break;
-
-                    case "新規受付停止":
-                        Front.Pause = true;
-                        break;
-
-                    case "強制切断":
-                        foreach (int _port in _port_list)
-                        {
-                            // 指定ポート切断
-                            _k = Front.IndexOf(_port);
-                            if (_k != null)
+                        case "強制切断":
+                            foreach (int _port in _port_list)
                             {
-                                _k.Status.Disc();
-                            }
-                        }
-                        break;
-
-                    case "ポート待受開始":
-                        foreach (int _port in _port_list)
-                        {
-                            _k = Front.IndexOf(_port);
-                            if (_k == null)
-                            {
-                                // 未起動ポートを起動
-                                _k = new Kagami("", (int)_port, (int)_item.Conn, (int)_item.Resv);
-                                // 帯域制限起動中の場合、statusの追加設定
-                                if (Front.BndWth.EnableBandWidth)
+                                // 指定ポート切断
+                                _k = Front.IndexOf(_port);
+                                if (_k != null)
                                 {
-                                    _k.Status.GUILimitUPSpeed = (int)Front.BndWth.BandStopValue;
-                                    _k.Status.LimitUPSpeed = Front.CnvLimit((int)Front.BndWth.BandStopValue, (int)Front.BndWth.BandStopUnit);
+                                    _k.Status.Disc();
                                 }
-                                Front.Add(_k);
                             }
-                        }
-                        break;
+                            break;
 
-                    case "ポート待受停止":
-                        foreach (int _port in _port_list)
-                        {
-                            _k = Front.IndexOf(_port);
-                            if (_k != null)
+                        case "ポート待受開始":
+                            foreach (int _port in _port_list)
                             {
-                                // 指定ポートが起動中なので、停止する
-                                _k.Status.RunStatus = false;
+                                _k = Front.IndexOf(_port);
+                                if (_k == null)
+                                {
+                                    // 未起動ポートを起動
+                                    _k = new Kagami("", (int)_port, (int)_item.Conn, (int)_item.Resv);
+                                    // 帯域制限起動中の場合、statusの追加設定
+                                    if (Front.BndWth.EnableBandWidth)
+                                    {
+                                        _k.Status.GUILimitUPSpeed = (int)Front.BndWth.BandStopValue;
+                                        _k.Status.LimitUPSpeed = Front.CnvLimit((int)Front.BndWth.BandStopValue, (int)Front.BndWth.BandStopUnit);
+                                    }
+                                    Front.Add(_k);
+                                }
                             }
-                        }
-                        break;
+                            break;
 
-                    case "接続枠数変更":
-                        foreach (int _port in _port_list)
-                        {
-                            _k = Front.IndexOf(_port);
-                            if (_k != null)
+                        case "ポート待受停止":
+                            foreach (int _port in _port_list)
                             {
-                                _k.Status.Conn_UserSet = (int)_item.Conn;
-                                _k.Status.Reserve = (int)_item.Resv;
+                                _k = Front.IndexOf(_port);
+                                if (_k != null)
+                                {
+                                    // 指定ポートが起動中なので、停止する
+                                    _k.Status.RunStatus = false;
+                                }
                             }
-                        }
-                        break;
+                            break;
 
-                    default:
-                        throw new Exception("not implemented.");
+                        case "接続枠数変更":
+                            foreach (int _port in _port_list)
+                            {
+                                _k = Front.IndexOf(_port);
+                                if (_k != null)
+                                {
+                                    _k.Status.Conn_UserSet = (int)_item.Conn;
+                                    _k.Status.Reserve = (int)_item.Resv;
+                                }
+                            }
+                            break;
+                        case "鏡終了後待受停止":
+                            foreach (int _port in _port_list)
+                            {
+                                _k = Front.IndexOf(_port);
+                                if (_k != null)
+                                {
+                                    if (_k.Status.ImportURL == "待機中")
+                                        _k.Status.RunStatus = false;
+                                    else
+                                        _k.Status.ListenStop = true;
+                                }
+                            }
+                            break;
+                        default:
+                            throw new Exception("not implemented.");
+                    }
+                    // 全スケジュール完了後
+                    // ステータスバーのAUDIT実施
+                    statusBarAudit();
                 }
-                // 全スケジュール完了後
-                // ステータスバーのAUDIT実施
-                statusBarAudit();
+                #endregion
             }
-            #endregion
-
+            catch { }
 #if OVERLOAD
             //エクスポート接続過負荷試験ツール
             _k = this.SelectedKagami;
@@ -3399,7 +4055,6 @@ namespace Kagamin2
             {
                 Front.AddLogDebug("帯域制限状態変更", "帯域制限タスクを開始します");
                 BandTh = new Thread(BandWidth);
-                BandTh.Name = "BandWidth";
                 BandTh.Start();
             }
             catch
@@ -3564,6 +4219,26 @@ namespace Kagamin2
         }
         #endregion
 
+        private void clientView_ColumnClick(object sender, ColumnClickEventArgs e)
+        {
+
+            //ListViewItemSorterを指定する
+            listViewItemSorter.Column = e.Column;
+
+            //並び替える（ListViewItemSorterを設定するとSortが自動的に呼び出される）
+            lock (clientView)
+                clientView.Sort();
+
+        }
+
+
+
+
+
+
+
+
+
 #if OVERLOAD
         /// <summary>
         /// エクスポート接続過負荷試験ツール
@@ -3581,5 +4256,157 @@ namespace Kagamin2
             _status.Disc();
         }
 #endif
+    }
+
+}
+/// <summary>
+/// ListViewの項目の並び替えに使用するクラス
+/// </summary>
+public class ListViewItemComparer : IComparer
+{
+    /// <summary>
+    /// 比較する方法
+    /// </summary>
+    public enum ComparerMode
+    {
+        String,
+        Integer,
+        DateTime
+    };
+
+    private int _column;
+    private SortOrder _order;
+    private ComparerMode _mode;
+    private ComparerMode[] _columnModes;
+
+    /// <summary>
+    /// 並び替えるListView列の番号
+    /// </summary>
+    public int Column
+    {
+        set
+        {
+            if (_column == value)
+            {
+                if (_order == SortOrder.Ascending)
+                    _order = SortOrder.Descending;
+                else if (_order == SortOrder.Descending)
+                    _order = SortOrder.Ascending;
+            }
+            _column = value;
+        }
+        get
+        {
+            return _column;
+        }
+    }
+    /// <summary>
+    /// 昇順か降順か
+    /// </summary>
+    public SortOrder Order
+    {
+        set
+        {
+            _order = value;
+        }
+        get
+        {
+            return _order;
+        }
+    }
+    /// <summary>
+    /// 並び替えの方法
+    /// </summary>
+    public ComparerMode Mode
+    {
+        set
+        {
+            _mode = value;
+        }
+        get
+        {
+            return _mode;
+        }
+    }
+    /// <summary>
+    /// 列ごとの並び替えの方法
+    /// </summary>
+    public ComparerMode[] ColumnModes
+    {
+        set
+        {
+            _columnModes = value;
+        }
+    }
+
+    /// <summary>
+    /// ListViewItemComparerクラスのコンストラクタ
+    /// </summary>
+    /// <param name="col">並び替える列番号</param>
+    /// <param name="ord">昇順か降順か</param>
+    /// <param name="mthd">並び替えの方法</param>
+    public ListViewItemComparer(
+        int col, SortOrder ord, ComparerMode cmod)
+    {
+        _column = col;
+        _order = ord;
+        _mode = cmod;
+    }
+    public ListViewItemComparer()
+    {
+        _column = 0;
+        _order = SortOrder.Ascending;
+        _mode = ComparerMode.String;
+    }
+
+    //xがyより小さいときはマイナスの数、大きいときはプラスの数、
+    //同じときは0を返す
+    public int Compare(object x, object y)
+    {
+        try
+        {
+            int result = 0;
+            //ListViewItemの取得
+            ListViewItem itemx = (ListViewItem)x;
+            ListViewItem itemy = (ListViewItem)y;
+
+            //並べ替えの方法を決定
+            if (_columnModes != null && _columnModes.Length > _column)
+                _mode = _columnModes[_column];
+
+            //並び替えの方法別に、xとyを比較する
+            switch (_mode)
+            {
+                case ComparerMode.String:
+                    result = string.Compare(itemx.SubItems[_column].Text,
+                        itemy.SubItems[_column].Text);
+                    break;
+                case ComparerMode.Integer:
+                    result = int.Parse(itemx.SubItems[_column].Text) -
+                        int.Parse(itemy.SubItems[_column].Text);
+                    break;
+                case ComparerMode.DateTime:
+                    result = DateTime.Compare(
+                        DateTime.Parse(itemx.SubItems[_column].Text),
+                        DateTime.Parse(itemy.SubItems[_column].Text));
+                    break;
+            }
+
+            //降順の時は結果を+-逆にする
+            if (_order == SortOrder.Descending)
+                result = -result;
+            else if (_order == SortOrder.None)
+                result = 0;
+
+            //結果を返す
+            return result;
+        }
+        catch (Exception e)
+        {
+#if DEBUG
+            MessageBox.Show(e.Message);
+#endif
+            return 0;
+        }
     }
 }

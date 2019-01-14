@@ -155,7 +155,6 @@ namespace HybridDSP.Net.HTTP
                 throw new InvalidOperationException("The server can not be started again.");
 
             _thread = new Thread(this.Run);
-            _thread.Name = "HTTPServer";
             _thread.IsBackground = true;
             _thread.Start();
         }

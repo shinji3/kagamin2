@@ -32,9 +32,11 @@ namespace Kagamin2
             this.optBandUnit.Items.AddRange(Front.BandStopUnitString);
             this.clmScheduleEvent.Items.Clear();
             this.clmScheduleEvent.Items.AddRange(Front.ScheduleEventString);
-#if DEBUG
-            this.clmScheduleData.Visible = true;
-#endif
+            /*
+            this.optStopSelect.DropDownStyle = ComboBoxStyle.DropDownList;
+            this.optStopSystem.DropDownStyle = ComboBoxStyle.DropDownList;
+            
+             */
             // Front→オプション画面に反映
             LoadSetting();
 
@@ -57,12 +59,12 @@ namespace Kagamin2
             }
             _clm = null;
         }
+
         private void Option_FormClosing(object sender, FormClosingEventArgs e)
         {
             // カラムサイズ保存
             Front.Form.ScheduleColumn = "" + clmScheduleEnable.Width + "," + clmScheduleEvent.Width + "," + clmSchedulePort.Width + "," + clmScheduleOption.Width;
         }
-
         #region 設定の読み書き
         /// <summary>
         /// Front→GUIに設定を反映
@@ -78,6 +80,11 @@ namespace Kagamin2
                 optPortList.Text += _i.ToString() + Environment.NewLine;
                 clmSchedulePort.Items.Add(_i.ToString());
             }
+            foreach (SCHEDULE i in Front.ScheduleItem)
+            {
+                if (!clmSchedulePort.Items.Contains(i.Port) && i.Port != 0)
+                    clmSchedulePort.Items.Add(i.Port.ToString());
+            }
             // スケジュール設定ポートリストに「ALL」を追加
             clmSchedulePort.Items.Add("ALL");
 
@@ -91,8 +98,7 @@ namespace Kagamin2
             //帯域制限
             if (optBandType.Items.Count > Front.BndWth.BandStopMode)
                 optBandType.SelectedIndex = (int)Front.BndWth.BandStopMode;
-            if (optBandValue.Maximum > Front.BndWth.BandStopValue)
-                optBandValue.Value = Front.BndWth.BandStopValue;
+            optBandValue.Value = Front.BndWth.BandStopValue;
             if (optBandUnit.Items.Count > Front.BndWth.BandStopUnit)
                 optBandUnit.SelectedIndex = (int)Front.BndWth.BandStopUnit;
             optBandReserve.Checked = Front.BndWth.BandStopResv;
@@ -106,12 +112,6 @@ namespace Kagamin2
             optKagamiLogFile.Text = Front.Log.KagamiLogFile;
             optKagamiDetailLog.Checked = Front.Log.LogDetail;
             optHpLogFile.Text = Front.Log.HpLogFile;
-
-            //最小化時
-            if (Front.Form.EnableTrayIcon)
-                optMinTray.Checked = true;
-            else
-                optMinBar.Checked = true;
             #endregion
 
             #region 鏡置き場
@@ -128,23 +128,37 @@ namespace Kagamin2
                 groupKgm1.Enabled = false;
                 groupKgm2.Enabled = false;
             }
+            foreach (string _str in Front.Acl.DenyHost)
+            {
+                if (!string.IsNullOrEmpty(_str))
+                    optDenyHost.Text += _str + "\r\n";
+            }
+            foreach (string _str in Front.Acl.DenyUA)
+            {
+                if (!string.IsNullOrEmpty(_str))
+                    optDenyUA.Text += _str + "\r\n";
+            }
+
             optHPAddr.Text = Front.Hp.IpHTTP;
             optHPPort.Text = Front.Hp.PortHTTP.ToString();
             optHPDir.Text = Front.Hp.PublicDir;
-
+            optHPDenyList.Clear();
             //エントランス接続制限
             foreach (string s in Front.Acl.HpDenyRemoteHost)
                 optHPDenyList.Text += s + Environment.NewLine;
+            if (Front.DenyLogin != null)
+            {
+                foreach (string s in Front.DenyLogin)
+                    optHPDenyList.Text += s + "(LoginDeny)" + Environment.NewLine;
+            }
             if (optHPDenyList.Text.Length >= Environment.NewLine.Length)
                 optHPDenyList.Text = optHPDenyList.Text.Remove(optHPDenyList.Text.Length - Environment.NewLine.Length); // 余計な末尾の改行消し
 
             //インポート接続制限
-            ///インポート拒否URL
             foreach (string s in Front.Acl.DenyImportURL)
                 optDenyList.Text += s + Environment.NewLine;
             if (optDenyList.Text.Length >= Environment.NewLine.Length)
                 optDenyList.Text = optDenyList.Text.Remove(optDenyList.Text.Length - Environment.NewLine.Length); // 余計な末尾の改行消し
-            ///同一インポートURL接続制限
             if (Front.Acl.LimitSameImportURL == 0)
             {
                 optSameImportIPKick.Checked = false;
@@ -156,7 +170,6 @@ namespace Kagamin2
                 optSameImportIPNum.Enabled = true;
                 optSameImportIPNum.Value = Front.Acl.LimitSameImportURL;
             }
-            ///長時間インポート接続制限
             if (Front.Acl.ImportOutTime == 0)
             {
                 optImportKick.Checked = false;
@@ -168,7 +181,9 @@ namespace Kagamin2
                 optImportOutTime.Enabled = true;
                 optImportOutTime.Value = Front.Acl.ImportOutTime;
             }
-            ///クライアント数制限
+            ///インポートURLと設定者IPの一致チェック
+            optSetUserIpCheck.Checked = Front.Acl.SetUserIpCheck;
+
             optClientTimeKick.Checked = Front.Acl.ClientOutCheck;
             optClientNum.Enabled = Front.Acl.ClientOutCheck;
             optClientNum.Value = Front.Acl.ClientOutNum;
@@ -186,9 +201,10 @@ namespace Kagamin2
             }
             ///待機中ポートがあれば自動解放しない
             optPortFullOnly.Checked = Front.Acl.PortFullOnlyCheck;
-            ///インポートURLと設定者IPの一致チェック
-            optSetUserIpCheck.Checked = Front.Acl.SetUserIpCheck;
 
+            optAuthEnable.Checked = Front.Hp.AuthEnable;
+            optAuthPass.Text = Front.Hp.AuthPass;
+            optAuthUser.Text = Front.Hp.AuthUser;
             #endregion
 
             #region 詳細設定
@@ -198,7 +214,9 @@ namespace Kagamin2
             optSendTimeOut.Value = Front.Sock.SockSendTimeout;
             optSendQueueSize.Value = Front.Sock.SockSendQueueSize;
             optSockCloseDelay.Value = Front.Sock.SockCloseDelay;
-
+            optUPnPEnable.Checked = Front.Sock.upnp;
+            optVirtualHost.Checked = Front.Sock.VirtualHost;
+            optBusyConSend.Checked = Front.Sock.ConnInfoSend;
             //その他詳細
             optBalloonTip.Checked = Front.Opt.BalloonTip;
             optBrowser.Checked = Front.Opt.BrowserView;
@@ -226,6 +244,13 @@ namespace Kagamin2
             optEnableInfo.Checked = Front.Opt.EnableInfo;
             optEnableAdmin.Checked = Front.Opt.EnableAdmin;
             optAdminPass.Text = Front.Opt.AdminPass;
+
+            opttranskagamin.Checked = Front.Opt.TransKagamin;
+            optTransPerEnable.Checked = Front.Opt.NotMyTrans;
+            optEnableImportRedirect.Checked = Front.Opt.ImportRedirect;
+            optInTray.Checked = Front.Opt.InTrayOn;
+            optWebKick.Checked = Front.Opt.WebKick;
+
             if (Front.Opt.EnableAdmin)
             {
                 optAdminLabel.Enabled = true;
@@ -242,6 +267,49 @@ namespace Kagamin2
             optSndDisc.Text = Front.Opt.SndDiscFile;
             #endregion
 
+            #region 転送量制限
+            /*optStopCheck.Checked = Front.Acl.StopFlag;
+            groupBox3.Enabled = optStopCheck.Checked;
+            optDLCheck.Checked = Front.Acl.DLContainFlag;
+            optStopSystem.SelectedIndex = (int)Front.Acl.StopSelect;
+            optStopSelect.SelectedIndex = (int)Front.Acl.StopMBSelect;
+
+            if (Front.Acl.TrafficHour == 2)
+                optHourTraffic.CheckState = CheckState.Checked;
+            if (Front.Acl.TrafficHour == 1)
+                optHourTraffic.CheckState = CheckState.Indeterminate;
+            if (Front.Acl.TrafficHour == 0)
+                optHourTraffic.CheckState = CheckState.Unchecked;
+
+            try
+            {
+                if (Front.Acl.StopMBSelect == 0)
+                {
+                    optStopMB.Value = Front.Acl.StopMB;
+                }
+                else if (Front.Acl.StopMBSelect == 1)
+                {
+                    optStopMB.Value = Front.Acl.StopMB / 1024;
+                }
+                else if (Front.Acl.StopMBSelect == 2)
+                {
+                    optStopMB.Value = Front.Acl.StopMB / (1024 * 1024);
+                }
+                else
+                {
+                    MessageBox.Show("単位が不明です。(" + Front.Acl.StopMBSelect.ToString() + ")");
+                    Front.Acl.StopMBSelect = 0;
+                    Front.Acl.StopMB = 25600;
+                }
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                Front.Acl.StopMBSelect = 0;
+                Front.Acl.StopMB = 25600;
+            }
+            */
+            #endregion
             #region スケジュール起動
             for (int _num = 0; _num < Front.ScheduleItem.Count; _num++)
             {
@@ -272,6 +340,47 @@ namespace Kagamin2
                 resetClmScheduleOption(_num);
             }
             #endregion
+            #region その他
+            ClosedEnable.Checked = (Front.Acl.ClosedPassward == "") ? false : true;
+            optPrivatePassword.Text = Front.Acl.ClosedPassward;
+            optPrivateComment.Text = Front.Acl.ClosedComment;
+
+            optStartHP.Checked = Front.Hp.HPstartON;
+            optStartPort.Checked = Front.Hp.PortstartON;
+
+            optLoinOut.Checked = (Front.Acl.FailureCount == 0) ? false : true;
+            optLoginCount.Value = Front.Acl.FailureCount;
+
+            /*
+            optpasssql.Text = Front.Opt.PassMySQL;
+            optsqlhost.Text = Front.Opt.HostMySQL;
+            optpasssql.Text = Front.Opt.PassMySQL;
+            mySQLOn.Checked = Front.Opt.MySQLEnable;
+            optDateBaseName.Text = Front.Opt.RearDB;
+            optReadCulum.Text = Front.Opt.ReadRowMySQL;
+            optReadIP.Text = Front.Opt.ReadRowIPMySQL;
+            optHyou.Text = Front.Opt.ReadHyou;
+            optusersql.Text = Front.Opt.UserMuSQL;
+            */
+             
+            optWMPEnable.Checked = Front.Opt.ViewWMP;
+
+            ClosedEnable_CheckedChanged(null, EventArgs.Empty);
+            optLoinOut_CheckedChanged(null, EventArgs.Empty);
+            optStartHP_CheckedChanged(null, EventArgs.Empty);
+            AuthIDText.Text = Front.Opt.AuthID;
+            AuthPassText.Text = Front.Opt.AuthPass;
+            optWebExport.Checked = Front.Opt.AuthWebSet;
+            for (int i = 0; i < optStartPortList.Items.Count; i++)
+            {
+                foreach (int _port in Front.Hp.StartPortList)
+                {
+                    if (_port == int.Parse(optStartPortList.Items[i].ToString()))
+                        optStartPortList.SetItemChecked(i, true);
+                }
+            }
+            #endregion
+            optAuthEnable_CheckedChanged(null, null);
         }
 
         /// <summary>
@@ -344,8 +453,19 @@ namespace Kagamin2
             Front.Log.LogDetail = optKagamiDetailLog.Checked;
             Front.Log.HpLogFile = optHpLogFile.Text;
 
-            //最小化時
-            Front.Form.EnableTrayIcon = optMinTray.Checked;
+            Front.Acl.DenyHost.Clear();
+            foreach (string _str in optDenyHost.Lines)
+            {
+                if (!string.IsNullOrEmpty(_str))
+                    Front.Acl.DenyHost.Add(_str);
+            }
+            Front.Acl.DenyUA.Clear();
+            foreach (string _str in optDenyUA.Lines)
+            {
+                if (!string.IsNullOrEmpty(_str))
+                    Front.Acl.DenyUA.Add(_str);
+            }
+
             #endregion
 
             #region 鏡置き場
@@ -372,6 +492,8 @@ namespace Kagamin2
                     {
                         str = sr.ReadLine();
                         if (str.Length > 0 && Front.Acl.HpDenyRemoteHost.IndexOf(str) == -1)
+                            if (Front.DenyLogin.Contains(str))
+                                continue;
                             Front.Acl.HpDenyRemoteHost.Add(str);
                     }
                 }
@@ -394,17 +516,16 @@ namespace Kagamin2
                 }
                 catch { }
             }
-            ///同一インポートURL接続制限
             if (optSameImportIPKick.Checked)
                 Front.Acl.LimitSameImportURL = (uint)optSameImportIPNum.Value;
             else
                 Front.Acl.LimitSameImportURL = 0;
-            ///長時間インポート接続制限
+
             if (optImportKick.Checked)
                 Front.Acl.ImportOutTime = (uint)optImportOutTime.Value;
             else
                 Front.Acl.ImportOutTime = 0;
-            ///クライアント数制限
+
             if (optClientTimeKick.Checked)
             {
                 Front.Acl.ClientOutCheck = true;
@@ -419,12 +540,58 @@ namespace Kagamin2
                 Front.Acl.ClientOutTime = 10;
                 Front.Acl.ClientNotIPCheck = false;
             }
-            ///待機中ポートがあれば自動解放しない
-            Front.Acl.PortFullOnlyCheck = optPortFullOnly.Checked;
             ///インポートURLと設定者IPの一致チェック
             Front.Acl.SetUserIpCheck = optSetUserIpCheck.Checked;
+            ///待機中ポートがあれば自動解放しない
+            Front.Acl.PortFullOnlyCheck = optPortFullOnly.Checked;
+            Front.Hp.AuthEnable = optAuthEnable.Checked;
+            Front.Hp.AuthPass = optAuthPass.Text;
+            Front.Hp.AuthUser = optAuthUser.Text;
             #endregion
+            #region 転送量制限
+            /*
+            Front.Acl.StopFlag = optStopCheck.Checked;
+            Front.Acl.DLContainFlag = optDLCheck.Checked;
+            Front.Acl.StopMBSelect = (uint)optStopSelect.SelectedIndex;
 
+            Front.Acl.StopSelect = (uint)optStopSystem.SelectedIndex;
+            if (optHourTraffic.CheckState == CheckState.Checked)
+                Front.Acl.TrafficHour = 2;
+            if (optHourTraffic.CheckState == CheckState.Indeterminate)
+                Front.Acl.TrafficHour = 1;
+            if (optHourTraffic.CheckState == CheckState.Unchecked)
+            {
+                Front.Acl.TrafficHour = 0;
+                Front.Traffic = false;
+            }
+            try
+            {
+                if (Front.Acl.StopMBSelect == 0)
+                {
+                    Front.Acl.StopMB = (uint)optStopMB.Value;
+                }
+                else if (Front.Acl.StopMBSelect == 1)
+                {
+                    Front.Acl.StopMB = (uint)optStopMB.Value * 1024;
+                }
+                else if (Front.Acl.StopMBSelect == 2)
+                {
+                    Front.Acl.StopMB = (uint)optStopMB.Value * (1024 * 1024);
+                }
+                else
+                {
+                    MessageBox.Show("単位が不明です。(" + Front.Acl.StopMBSelect.ToString() + ")");
+                    Front.Acl.StopMBSelect = 0;
+                    Front.Acl.StopMB = 25600;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                Front.Acl.StopMBSelect = 0;
+                Front.Acl.StopMB = 25600;
+            }*/
+            #endregion
             #region 詳細設定
             //通信関連
             Front.Sock.SockConnTimeout = (uint)optConnTimeOut.Value;
@@ -432,7 +599,9 @@ namespace Kagamin2
             Front.Sock.SockSendTimeout = (uint)optSendTimeOut.Value;
             Front.Sock.SockSendQueueSize = (uint)optSendQueueSize.Value;
             Front.Sock.SockCloseDelay = (uint)optSockCloseDelay.Value;
-
+            Front.Sock.upnp = optUPnPEnable.Checked;
+            Front.Sock.VirtualHost = optVirtualHost.Checked;
+            Front.Sock.ConnInfoSend = optBusyConSend.Checked;
             //その他詳細
             Front.Opt.BalloonTip = optBalloonTip.Checked;
             Front.Opt.BrowserView = optBrowser.Checked;
@@ -441,15 +610,26 @@ namespace Kagamin2
             Front.Opt.PriKagamin = optPriKagamin.Checked;
             Front.Acl.LimitSameClient = optSameClientKick.Checked ? (uint)optSameClientNum.Value : 0;
             Front.Opt.EnablePush = optEnablePush.Checked;
-            if (!optEnablePush.Checked)
-                foreach (Kagami _k in Front.KagamiList)
-                    _k.Status.DisablePull = false;
             Front.Opt.EnableInfo = optEnableInfo.Checked;
             Front.Opt.EnableAdmin = optEnableAdmin.Checked;
             Front.Opt.AdminPass = optAdminPass.Text;
             Front.Opt.SndConnOkFile = optSndConnOK.Text;
             Front.Opt.SndConnNgFile = optSndConnNG.Text;
             Front.Opt.SndDiscFile = optSndDisc.Text;
+            Front.Opt.NotMyTrans = optTransPerEnable.Checked;
+            Front.Opt.TransKagamin = opttranskagamin.Checked;
+            Front.Opt.ImportRedirect = optEnableImportRedirect.Checked;
+            Front.Opt.InTrayOn = optInTray.Checked;
+            Front.Opt.WebKick = optWebKick.Checked;
+            Front.Opt.AuthWebSet = optWebExport.Checked;
+            if (!Front.Opt.EnablePush)
+            {
+                lock (Front.KagamiList)
+                {
+                    foreach (Kagami _k in Front.KagamiList)
+                        _k.Status.PushOnly = false;
+                }
+            }
             #endregion
 
             #region スケジュール起動
@@ -469,9 +649,10 @@ namespace Kagamin2
                 switch (scheduleDataView[clmScheduleEvent.DisplayIndex, _num].Value.ToString())
                 {
                     case "強制切断":
-                    case "ポート待受開始":
-                    case "ポート待受停止":
-                    case "接続枠数変更":
+                    case "ポート待ち受け開始":
+                    case "ポート待ち受け停止":
+                    case "鏡終了後待受停止":
+                    case "転送量制限値変更":
                         if (scheduleDataView[clmSchedulePort.DisplayIndex, _num].Value == null)
                             continue;
                         _port = (string)scheduleDataView[clmSchedulePort.DisplayIndex, _num].Value;
@@ -514,6 +695,48 @@ namespace Kagamin2
                 Front.ScheduleItem.Add(_item);
             }
             #endregion
+            #region その他
+            if (optPrivatePassword.Text != "")
+            {
+                Front.Acl.ClosedPassward = (ClosedEnable.Checked == false) ? "" : optPrivatePassword.Text;
+            }
+            else if (optPrivatePassword.Text == "" && ClosedEnable.Checked)
+            {
+                MessageBox.Show("非公開用接続設定パスワードが空白です。", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Front.Acl.ClosedPassward = "";
+            }
+
+            Front.Acl.ClosedComment = optPrivateComment.Text;
+
+            Front.Hp.HPstartON = optStartHP.Checked;
+            Front.Hp.PortstartON = optStartPort.Checked;
+
+            Front.Acl.FailureCount = (optLoinOut.Checked == false) ? 0 : (uint)optLoginCount.Value;
+
+            Front.Hp.StartPortList.Clear();
+            /*
+            Front.Opt.PassMySQL = optpasssql.Text;
+            Front.Opt.HostMySQL = optsqlhost.Text;
+            Front.Opt.UserMuSQL = optusersql.Text;
+            Front.Opt.MySQLEnable = mySQLOn.Checked;
+            Front.Opt.ReadRowMySQL = optReadCulum.Text;
+            Front.Opt.RearDB = optDateBaseName.Text;
+            Front.Opt.ReadHyou = optHyou.Text;
+            Front.Opt.ReadRowIPMySQL = optReadIP.Text;
+            */
+            
+            foreach (string _port in optStartPortList.CheckedItems)
+            {
+                
+                Front.Hp.StartPortList.Add(int.Parse(_port));
+            }
+
+            Front.Opt.ViewWMP = optWMPEnable.Checked;
+            Front.Opt.AuthID = AuthIDText.Text;
+            Front.Opt.AuthPass = AuthPassText.Text;
+            Front.Opt.AuthWebSet = optWebExport.Checked;
+            #endregion
+
         }
         #endregion
         /// <summary>
@@ -538,8 +761,7 @@ namespace Kagamin2
             // Front→iniファイルに保存
             Front.SaveSetting();
         }
-
-        #region 基本設定タブ内イベント
+        #region 基本設定
         /// <summary>
         /// 鏡ログの参照ボタンを押した時
         /// </summary>
@@ -566,7 +788,7 @@ namespace Kagamin2
         }
         #endregion
 
-        #region 鏡置き場設定タブ内イベント
+        #region 鏡置き場設定
         /// <summary>
         /// HP公開機能のON/OFF制御
         /// </summary>
@@ -668,7 +890,7 @@ namespace Kagamin2
         }
         #endregion
 
-        #region 詳細設定タブ内イベント
+        #region 詳細設定
         /// <summary>
         /// 同一クライアント切断のチェック状態変更
         /// </summary>
@@ -769,27 +991,9 @@ namespace Kagamin2
             if (ofd.ShowDialog() == DialogResult.OK)
                 optSndDisc.Text = ofd.FileName;
         }
-        /// <summary>
-        /// BrowserView有効/無効切り替え
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void optBrowser_CheckedChanged(object sender, EventArgs e)
-        {
-            if (optBrowser.Checked)
-            {
-                optBrowserHtmlMode.Enabled = true;
-                optBrowserTextMode.Enabled = true;
-            }
-            else
-            {
-                optBrowserHtmlMode.Enabled = false;
-                optBrowserTextMode.Enabled = false;
-            }
-        }
         #endregion
 
-        #region スケジュール登録タブ内イベント
+        #region スケジュール登録タブ
         /// <summary>
         /// セルのフォーカスが移った時
         /// </summary>
@@ -805,7 +1009,13 @@ namespace Kagamin2
                 //オプション画面をモーダルダイアログ化すると利かない。。
                 //SendKeys.Send("{F4}");
                 //とりあえず編集もーど。
-                dgv.BeginEdit(false);
+                try
+                {
+                    dgv.BeginEdit(false);
+                }
+                catch
+                {
+                }
             }
         }
         /// <summary>
@@ -817,42 +1027,12 @@ namespace Kagamin2
         {
             /*
             e.Row.Cells[clmScheduleEnable.DisplayIndex].Value = false;
+            e.Row.Cells[clmScheduleHour.DisplayIndex].Value = clmScheduleHour.Items[0];
+            e.Row.Cells[clmScheduleMin.DisplayIndex].Value = clmScheduleMin.Items[0];
             e.Row.Cells[clmScheduleEvent.DisplayIndex].Value = clmScheduleEvent.Items[0];
             e.Row.Cells[clmSchedulePort.DisplayIndex].Value = clmSchedulePort.Items[0];
             */
             e.Row.Cells[clmScheduleData.DisplayIndex].Value = "0,0,0,0,0,1,0," + Front.Gui.Conn + "," + Front.Gui.Reserve;
-        }
-        /// <summary>
-        /// セルの入力開始
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void scheduleDataView_CellBeginEdit(object sender, DataGridViewCellCancelEventArgs e)
-        {
-            //詳細設定セルの編集開始で詳細設定ウィンドウを開く
-            if (e.ColumnIndex == clmScheduleOption.DisplayIndex)
-            {
-                // 詳細設定セルの編集自体はキャンセルしておく
-                e.Cancel = true;
-                // イベントが設定してあるかチェック
-                if (scheduleDataView[clmScheduleEvent.DisplayIndex, e.RowIndex].Value != null)
-                {
-                    if (scheduleDataView[clmSchedulePort.DisplayIndex, e.RowIndex].Value == null)
-                        scheduleDataView[clmSchedulePort.DisplayIndex, e.RowIndex].Value = "";
-                    if (scheduleDataView[clmScheduleData.DisplayIndex, e.RowIndex].Value == null)
-                        scheduleDataView[clmScheduleData.DisplayIndex, e.RowIndex].Value = "";
-                    Option2 optDlg = new Option2(
-                        scheduleDataView[clmScheduleEvent.DisplayIndex, e.RowIndex].Value.ToString(),
-                        scheduleDataView[clmSchedulePort.DisplayIndex, e.RowIndex].Value.ToString(),
-                        scheduleDataView[clmScheduleData.DisplayIndex, e.RowIndex].Value.ToString()
-                    );
-                    // 設定画面表示
-                    optDlg.ShowDialog();
-                    // 設定の反映
-                    scheduleDataView[clmScheduleData.DisplayIndex, e.RowIndex].Value = optDlg.GetResult();
-                    resetClmScheduleOption(e.RowIndex);
-                }
-            }
         }
         /// <summary>
         /// セルの入力完了
@@ -871,6 +1051,7 @@ namespace Kagamin2
                         case "ポート待受開始":
                         case "ポート待受停止":
                         case "接続枠数変更":
+                        case "鏡終了後待受停止":
                             scheduleDataView[clmSchedulePort.DisplayIndex, e.RowIndex].ReadOnly = false;
                             break;
                         default:
@@ -887,7 +1068,7 @@ namespace Kagamin2
             // clmScheduleOptionの文字列再設定
             resetClmScheduleOption(e.RowIndex);
         }
-        /// <summary>
+           /// <summary>
         /// 指定行数のclmScheduleOptionの文字列再設定
         /// </summary>
         /// <param name="row"></param>
@@ -943,7 +1124,258 @@ namespace Kagamin2
             scheduleDataView[clmScheduleOption.DisplayIndex, _row].Value = "";
             return;
         }
+
+
+    
+        private void dataGridViewComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            /*
+            try
+            {
+                DataGridViewCell curCell = scheduleDataView.CurrentCell;
+                switch (scheduleDataView[curCell.ColumnIndex, curCell.RowIndex].Value.ToString())
+                {
+                    case "強制切断":
+                    case "ポート待ち受け開始":
+                    case "ポート待ち受け停止":
+                    case "鏡終了後待受停止":
+                        scheduleDataView[clmSchedulePort.DisplayIndex, curCell.RowIndex].ReadOnly = false;
+                        break;
+                    case "転送量制限値変更":
+                        scheduleDataView[clmSchedulePort.DisplayIndex, curCell.RowIndex].ReadOnly = false;
+                        clmSchedulePort.Items.Clear();
+                        break;
+                    default:
+                        scheduleDataView[clmSchedulePort.DisplayIndex, curCell.RowIndex].Value = "ALL";
+                        scheduleDataView[clmSchedulePort.DisplayIndex, curCell.RowIndex].ReadOnly = true;
+                        break;
+                }
+            }
+            catch
+            {
+
+            }
+             */
+        }
+
+                
+            
+        
         #endregion
+        private void scheduleDataView_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
+        {
+            /*
+            DataGridView dgv = (DataGridView)sender;
+            int i;
+            //該当する列か調べる
+            if (dgv.Columns[e.ColumnIndex].Name == "clmSchedulePort" &&
+                dgv.Columns[e.ColumnIndex] is DataGridViewComboBoxColumn)
+            {
+                DataGridViewComboBoxColumn cbc =
+                    (DataGridViewComboBoxColumn)dgv.Columns[e.ColumnIndex];
+                //コンボボックスの項目に追加する
+                try
+                {
+                    if (!cbc.Items.Contains(e.FormattedValue) && int.TryParse(e.FormattedValue.ToString(), out i))
+                    {
+                        cbc.Items.Add(e.FormattedValue);
+                    }
+                }
+                catch
+                {
+                }
+
+
+            }
+             */
+        }
+        private void scheduleDataView_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
+        {
+            /*
+            if (e.Control is DataGridViewComboBoxEditingControl)
+            {
+                DataGridView dgv;
+                try
+                {
+                    //該当する列か調べる
+                    dgv = (DataGridView)sender;
+                    if (dgv.CurrentCell.OwningColumn.Name == "clmSchedulePort")
+                    {
+                        //編集のために表示されているコントロールを取得
+                        DataGridViewComboBoxEditingControl cb =
+                            (DataGridViewComboBoxEditingControl)e.Control;
+                        cb.DropDownStyle = ComboBoxStyle.DropDown;
+                    }
+
+
+                    //該当する列か調べる
+                    if (dgv.CurrentCell.OwningColumn.Name == "clmScheduleEvent")
+                    {
+                        //編集のために表示されているコントロールを取得
+                        this.dataGridViewComboBox =
+                            (DataGridViewComboBoxEditingControl)e.Control;
+                        //SelectedIndexChangedイベントハンドラを追加
+                        this.dataGridViewComboBox.SelectedIndexChanged +=
+                            new EventHandler(dataGridViewComboBox_SelectedIndexChanged);
+                    }
+
+                }
+                catch
+                {
+                }
+            }*/
+
+        }
+
+        private void optClientNotIPEnable_CheckedChanged(object sender, EventArgs e)
+        {
+            if (optBrowser.Checked)
+            {
+                optBrowserHtmlMode.Enabled = true;
+                optBrowserTextMode.Enabled = true;
+            }
+            else
+            {
+                optBrowserHtmlMode.Enabled = false;
+                optBrowserTextMode.Enabled = false;
+            }
+
+        }
+        /*
+        private void optStopCheck_CheckedChanged(object sender, EventArgs e)
+        {
+            groupBox3.Enabled = optStopCheck.Checked;
+            optDLCheck.Enabled = optStopCheck.Checked;
+            if (!optDLCheck.Enabled)
+                optDLCheck.Checked = false;
+            optHourTraffic.Enabled = optStopCheck.Checked;
+            if (!optHourTraffic.Enabled)
+                optHourTraffic.Checked = false;
+        }
+        */
+        private void StopClearBTN_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show("転送量をリセットしますか？", "確認",
+                 MessageBoxButtons.YesNo,
+                 MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                Front.DayUPSet = Front.TotalUP / (1024 * 1024);
+                if (Front.Acl.DLContainFlag)
+                    Front.DayUPSet += (Front.TotalDL / (1024 * 1024));
+                Front.Attainment = false;
+                for (int i = 0; i < 1440; i++)
+                {
+                    Front.Acl.TrafficTFHour[i] = 0;
+
+                }
+            }
+        }
+
+        private void UPnPTestBTN_Click(object sender, EventArgs e)
+        {
+            bool _suc;
+            int _port;
+
+            try
+            {
+                if (Front.Gui.PortList.Count != 0 && !Front.IndexOf(Front.Gui.PortList[0]).Status.ImportStatus)
+                    _port = Front.Gui.PortList[0];
+                else
+                    _port = 65500;
+            }
+            catch
+            {
+                _port = Front.Gui.PortList[0];
+            }
+#if DEBUG
+            _suc = JinkSoft.Utility.UPnP.UPnPClient.OpenFirewallPort("192.168.1.14", "192.168.1.4", _port);
+#endif
+#if !DEBUG
+            _suc = JinkSoft.Utility.UPnP.UPnPClient.OpenFirewallPort(65500);
+#endif
+            if (_suc)
+                MessageBox.Show("UPnPによるポート開放に成功しました(Port:" + _port.ToString() + ")", "開放成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            else
+                MessageBox.Show("UPnPによるポート開放に失敗しました(Port:" + _port.ToString() + ")", "開放失敗", MessageBoxButtons.OK, MessageBoxIcon.Error);
+#if DEBUG
+            _suc = JinkSoft.Utility.UPnP.UPnPClient.CloseFirewallPort("192.168.1.14", "192.168.1.4", 65500);
+#endif
+#if !DEBUG
+            _suc = JinkSoft.Utility.UPnP.UPnPClient.CloseFirewallPort(65500);
+#endif
+            if (_suc)
+                MessageBox.Show("UPnPによるポート閉鎖に成功しました(Port:" + _port.ToString() + ")", "閉鎖成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            else
+                MessageBox.Show("UPnPによるポート閉鎖に失敗しました(Port:" + _port.ToString() + ")", "閉鎖失敗", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+        }
+
+        private void scheduleDataView_CellBeginEdit(object sender, DataGridViewCellCancelEventArgs e)
+        {
+            //詳細設定セルの編集開始で詳細設定ウィンドウを開く
+            if (e.ColumnIndex == clmScheduleOption.DisplayIndex)
+            {
+                // 詳細設定セルの編集自体はキャンセルしておく
+                e.Cancel = true;
+                // イベントが設定してあるかチェック
+                if (scheduleDataView[clmScheduleEvent.DisplayIndex, e.RowIndex].Value != null)
+                {
+                    if (scheduleDataView[clmSchedulePort.DisplayIndex, e.RowIndex].Value == null)
+                        scheduleDataView[clmSchedulePort.DisplayIndex, e.RowIndex].Value = "";
+                    if (scheduleDataView[clmScheduleData.DisplayIndex, e.RowIndex].Value == null)
+                        scheduleDataView[clmScheduleData.DisplayIndex, e.RowIndex].Value = "";
+                    Option2 optDlg = new Option2(
+                        scheduleDataView[clmScheduleEvent.DisplayIndex, e.RowIndex].Value.ToString(),
+                        scheduleDataView[clmSchedulePort.DisplayIndex, e.RowIndex].Value.ToString(),
+                        scheduleDataView[clmScheduleData.DisplayIndex, e.RowIndex].Value.ToString()
+                    );
+                    // 設定画面表示
+                    optDlg.ShowDialog();
+                    // 設定の反映
+                    scheduleDataView[clmScheduleData.DisplayIndex, e.RowIndex].Value = optDlg.GetResult();
+                    resetClmScheduleOption(e.RowIndex);
+                }
+            }
+        }
+
+        private void ClosedEnable_CheckedChanged(object sender, EventArgs e)
+        {
+            optPrivateComment.Enabled = ClosedEnable.Checked;
+            optPrivatePassword.Enabled = ClosedEnable.Checked;
+        }
+
+        private void optStartHP_CheckedChanged(object sender, EventArgs e)
+        {
+            optStartPort.Enabled = optStartHP.Checked;
+            if (!optStartHP.Checked)
+                optStartPort.Checked = false;
+            optStartPortList.Enabled = optStartPort.Checked;
+            optStartPortList.Items.Clear();
+            foreach (string _temp in optPortList.Text.Split('\n'))
+            {
+                if (_temp == "")
+                    continue;
+                optStartPortList.Items.Add(_temp);
+            }
+        }
+
+        private void optLoinOut_CheckedChanged(object sender, EventArgs e)
+        {
+            optLoginCount.Enabled = optLoinOut.Checked;
+        }
+
+        private void optAuthEnable_CheckedChanged(object sender, EventArgs e)
+        {
+            optAuthPass.Enabled = optAuthEnable.Checked;
+            optAuthUser.Enabled = optAuthEnable.Checked;
+        }
+
+
+
+
+
+
+
 
     }
 }

@@ -4,7 +4,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Net;
-
+using System.Collections;
+using System.Diagnostics;
 namespace Kagamin2
 {
     /// <summary>
@@ -12,6 +13,7 @@ namespace Kagamin2
     /// インポートタスクとエクスポートタスクの両方から参照されるデータ
     /// </summary>
     public class Status
+
     {
         #region メンバ変数
 
@@ -53,6 +55,8 @@ namespace Kagamin2
                     {
                         str = ImportURL.Split(':')[0];
                     }
+                    if (str == "localhost")
+                        str = "127.0.0.1";
                 }
                 return str;
             }
@@ -79,12 +83,14 @@ namespace Kagamin2
         /// 通常接続最大数
         /// </summary>
         public int Connection;
-
+        /// <summary>
+        /// 接続最大数履歴
+        /// </summary>
+        public int ConnectionMax = 0;
         /// <summary>
         /// ユーザがGUI上から設定した通常接続最大数
         /// </summary>
         public int Conn_UserSet;
-
         /// <summary>
         /// リザーブ接続最大数
         /// </summary>
@@ -100,13 +106,10 @@ namespace Kagamin2
         /// 0=内側 1=外側 2=Push配信
         /// </summary>
         public int Type;
-
         /// <summary>
-        /// 0:pull有効
-        /// 1:pull無効(push only)
+        /// Kagami.exe方式リザーブを使う(未実装)
         /// </summary>
-        public bool DisablePull;
-
+        public bool KagamiexeReserve;
         /// <summary>
         /// ポートListen状態フラグ
         /// Push配信ポートとExportポートの切替で利用
@@ -118,18 +121,31 @@ namespace Kagamin2
         /// 鏡を停止したい時にfalseにする
         /// </summary>
         public bool RunStatus = true;
-
+        /// <summary>
+        /// trueの場合鏡が終了したときに外部待ち受けも終了する
+        /// </summary>
+        public bool ListenStop = false;
+        /// <summary>
+        /// 新規接続制限フラグ(ポート個別)
+        /// </summary>
+        public bool Pause = false;
         /// <summary>
         /// Importソースを正常に受信していればtrue
         /// </summary>
         public bool ImportStatus = false;
-
+        /// <summary>
+        /// Push配信専用フラグ
+        /// </summary>
+        public bool PushOnly = false;
         /// <summary>
         /// データ受信バイト数
         /// (３秒毎にリセット)
         /// </summary>
         public int RecvByte = 0;
-
+        /// <summary>
+        /// 鏡間リンク管理クラス(サーバ)
+        /// </summary>
+        public KagamiLink IKLink = null;
         #region GUI関連メンバ
         public class GUI
         {
@@ -166,7 +182,63 @@ namespace Kagamin2
         }
         public GUI Gui = new GUI();
         #endregion
+        #region キック管理クラス
+        /// <summary>
+        /// エクスポートに対するキック管理を行うクラス
+        /// </summary>
+        public class KICK
+        {
+            #region メンバー変数
+            /// <summary>
+            /// IP
+            /// </summary>
+            public string IP;
+            /// <summary>
+            /// 最初の接続をした時間
+            /// </summary>
+            public DateTime StartTime;
+            /// <summary>
+            /// 接続試行回数
+            /// </summary>
+            public int Cnt ;
+            /// <summary>
+            /// 接続拒否回数
+            /// </summary>
+            public int Cnt_out;
+            /// <summary>
+            /// 拒否開始時刻
+            /// </summary>
+            public DateTime DenyTime;
+            /// <summary>
+            /// 拒否終了時間(秒)
+            /// 無制限の場合は-1
+            /// </summary>
+            public int DenyEndTime;
+            
+            /// <summary>
+            /// 拒否中フラグ
+            /// </summary>
+            public bool KickFlag;
+            /// <summary>
+            /// 自動キックフラグ.falseの場合手動登録
+            /// </summary>
+            public bool AutoKick;
 
+            /// <summary>
+            /// 検査終了時刻
+            /// </summary>
+            public DateTime ResetTime
+            {
+                get { return StartTime.AddSeconds(Front.Kick.KickCheckSecond); }
+
+            }
+
+
+            #endregion
+        }
+        #endregion
+
+        public Dictionary<string,KICK> Kick = new Dictionary<string,KICK>();
         /*
          * Web Form情報保持メンバ
          */
@@ -174,6 +246,8 @@ namespace Kagamin2
         /// URL表示ON/OFF
         /// </summary>
         public bool UrlVisible = true;
+
+        
         /// <summary>
         /// エントランス設定用パスワード
         /// </summary>
@@ -191,18 +265,34 @@ namespace Kagamin2
         /// </summary>
         public string Url = "";
         /// <summary>
-        /// 子鏡へのリダイレクト許容フラグ
+        /// 認証ID
         /// </summary>
-        public bool EnableRedirectChild = false;
+        public string AuthID = "";
         /// <summary>
-        /// 親へのリダイレクト許容フラグ
+        /// 認証Pass
         /// </summary>
-        public bool EnableRedirectParent = false;
+        public string AuthPass = "";
         /// <summary>
-        /// 新規接続制限フラグ(ポート個別)
+        /// インポート認証時の要表示ラベル
         /// </summary>
-        public bool Pause = false;
+        public string ImportAuthLabel = "";
+        /// <summary>
+        /// インポートの認証ID
+        /// </summary>
+        public string ImportAuthID = "";
+        /// <summary>
+        /// インポートの認証パス
+        /// </summary>
+        public string ImportAuthPass = "";
 
+        /// <summary>
+        /// WEB優先子鏡転送許可
+        /// </summary>
+        public bool TransWeb = Front.Opt.TransKagamin;
+        /// <summary>
+        /// Shoutcastソース
+        /// </summary>
+        public bool ShoutCast = false;
         /// <summary>
         /// ヘッダ取得応答/HTTP1.0
         /// </summary>
@@ -249,7 +339,34 @@ namespace Kagamin2
         /// Videoストリームのストリーム番号
         /// </summary>
         public int SelectedVideoRecord = 0;
-
+        /// <summary>
+        /// ストリームヘッダに記述されてるTitle
+        /// </summary>
+        public string ASFTitle = "";
+        /// <summary>
+        /// ストリームヘッダに記述されてるAuthor
+        /// </summary>
+        public string ASFAuthor = "";
+        /// <summary>
+        /// ストリームヘッダに記述されてるCopyRight
+        /// </summary>
+        public string ASFCopyRight = "";
+        /// <summary>
+        /// ストリームヘッダに記述されてるDescription
+        /// </summary>
+        public string ASFDescription = "";
+        /// <summary>
+        /// ストリームヘッダに記述されてるRating
+        /// </summary>
+        public string ASFRating = "";
+        /// <summary>
+        /// 解像度縦
+        /// </summary>
+        public int MediaHeight = 0;
+        /// <summary>
+        /// 解像度横
+        /// </summary>
+        public int MediaWidth = 0;
         /*
          * 統計情報
          */
@@ -273,6 +390,10 @@ namespace Kagamin2
         /// エクスポート接続回数
         /// </summary>
         public int ExportCount = 0;
+        /// <summary>
+        /// 子鏡転送回数
+        /// </summary>
+        public int TransCount = 0;
         /// <summary>
         /// インポート接続リトライ回数カウンタ
         /// </summary>
@@ -340,6 +461,35 @@ namespace Kagamin2
         /// </summary>
         public int MaxDLSpeed = 0;
         /// <summary>
+        /// 動画最大ビットレート(Kbps)
+        /// </summary>
+        public int MaxVideoBitRate = 0;
+        /// <summary>
+        /// 音声最大ビットレート(Kbps)
+        /// </summary>
+        public int MaxAudioBitRate = 0;
+        /// <summary>
+        /// 選択中のビットレート(Videoマルチビットレート用Kbps)
+        /// </summary>
+        public int NowBitRateVideo = 0;
+        /// <summary>
+        /// 選択中のビットレート(Audioマルチビットレート用Kbps)
+        /// </summary>
+        public int NowBitRateAudio = 0;
+        /// <summary>
+        /// 選択中のビットレートのID
+        /// </summary>
+        public int MultiID = 0;
+        /// <summary>
+        /// マルチビットレート切り替え用(true=切り替えリトライ)
+        /// </summary>
+        public bool SelectMulti = false;
+        /// <summary>
+        /// マルチビットレート切り替え一時用(true=切り替えリトライ)
+        /// </summary>
+        public bool tempMulti = false;
+
+        /// <summary>
         /// 現在の接続でのエクスポート先への合計UpSize
         /// </summary>
         public ulong TotalUPSize = 0;
@@ -347,7 +497,14 @@ namespace Kagamin2
         /// 現在の接続でのインポート元からの合計DownSize
         /// </summary>
         public ulong TotalDLSize = 0;
-
+        /// <summary>
+        /// クライアントに認証を要求するか
+        /// </summary>
+        public bool ExportAuth = false;
+        ////
+        //public bool VirtualHost = false;
+        //public bool SQLOn = false;
+        ////
         #endregion
 
         #region コンストラクタ
@@ -362,14 +519,15 @@ namespace Kagamin2
         public Status(Kagami _kagami, string _importURL, int _myPort, int _connection, int _reserve)
         {
             Kagami = _kagami;
+
             ImportURL = _importURL;
             ImportURL.ToLower();
             MyPort = _myPort;
             Conn_UserSet = _connection;
             Connection = _connection;
             Reserve = _reserve;
-            DisablePull = false;
-
+            AuthID = Front.Opt.AuthID;
+            AuthPass = Front.Opt.AuthPass;
             // ImportURLが空なら外側接続モードで起動
             if (ImportURL == "")
             {
@@ -413,15 +571,142 @@ namespace Kagamin2
                 Password = "";
                 SetUserIP = "";
                 Gui.ReserveItem.Clear();
+                Kick.Clear();
+                Gui.KickItem.Clear();
                 CurrentDLSpeed = 0;
                 AverageDLSpeed = 0;
                 TrafficCount = 0;
                 MaxDLSpeed = 0;
                 // 最大接続数をユーザ指定値に戻す
                 Connection = Conn_UserSet;
+                Event.EventUpdateKick(Kagami, null, 2);
             }
         }
+        /// <summary>
+        /// マルチビットレート(video)のIDを一つ進めます。
+        /// SelectedAudioRecord,Status.SelectedVideoRecordを所定のIDへ変更して
+        /// 再接続をします。
+        /// </summary>
+        /// <returns>ビットレート</returns>
+        public void MultiVideo()
+        {
+            bool select = false;
+            /*
+            if (SelectedVideoRecord + 1 > StreamSwitchCount)
+            {
+                for (int cnt = 1; cnt <= StreamSwitchCount; cnt++)
+                {
+                    if ((StreamType[cnt - 1] == 1))
+                    {
+                        SelectedVideoRecord = cnt;
+                        select = true;
+                        SelectMulti = true;
+                        tempMulti = true;
+                        NowBitRateVideo = StreamBitrate[cnt-1] / 1000;
+                    }
+                }
+                return;
 
+
+            }*/
+            int _temp = SelectedVideoRecord;
+            for (int cnt = SelectedVideoRecord+1; cnt <= StreamSwitchCount; cnt++)
+            {
+                if ((StreamType[cnt-1] == 1))
+                {
+                    if (_temp == cnt)
+                        return;
+                    SelectedVideoRecord = cnt;
+                    select = true;
+                    SelectMulti = true;
+                    tempMulti = true;
+                    NowBitRateVideo = StreamBitrate[cnt-1] / 1000;
+                    return;
+                }
+            }
+            if (!select)
+            {
+                for (int cnt = 1; cnt <= StreamSwitchCount; cnt++)
+                {
+                    if ((StreamType[cnt - 1] == 1))
+                    {
+                        if (_temp == cnt)
+                            return;
+                        SelectedVideoRecord = cnt;
+                        select = true;
+                        SelectMulti = true;
+                        tempMulti = true;
+                        NowBitRateVideo = StreamBitrate[cnt - 1] / 1000;
+                        return;
+                    }
+                }
+
+            }
+
+        }
+        /// <summary>
+        /// マルチビットレート(audio)のIDを一つ進めます。
+        /// SelectedAudioRecord,Status.SelectedVideoRecordを所定のIDへ変更して
+        /// 再接続をします。
+        /// </summary>
+        /// <returns>ビットレート</returns>
+        public void Multiaudio()
+        {
+            bool select = false;
+            /*
+            if (SelectedAudioRecord + 1 > StreamSwitchCount)
+            {
+                for (int cnt = 1; cnt <= StreamSwitchCount; cnt++)
+                {
+                    if ((StreamType[cnt - 1] == 0))
+                    {
+                        SelectedAudioRecord = cnt;
+                        select = true;
+                        SelectMulti = true;
+                        tempMulti = true;
+                        NowBitRateAudio = StreamBitrate[cnt - 1] / 1000;
+                    }
+                }
+                return;
+
+
+            }*/
+            int _temp = SelectedAudioRecord;
+            for (int cnt = SelectedAudioRecord+1; cnt <= StreamSwitchCount; cnt++)
+            {
+                if ((StreamType[cnt-1] == 0))
+                {
+                    if (_temp == cnt)
+                        return;
+                    SelectedAudioRecord = cnt;
+                    select = true;
+                    SelectMulti = true;
+                    tempMulti = true;
+                    NowBitRateAudio= StreamBitrate[cnt-1] / 1000;
+                    return;
+                }
+            }
+            if (!select)
+            {
+                for (int cnt = 1; cnt <= StreamSwitchCount; cnt++)
+                {
+                    if ((StreamType[cnt - 1] == 0))
+                    {
+                        if (_temp == cnt)
+                            return;
+                        SelectedAudioRecord = cnt;
+                        select = true;
+                        SelectMulti = true;
+                        tempMulti = true;
+                        NowBitRateAudio= StreamBitrate[cnt - 1] / 1000;
+                        return;
+                    }
+                }
+
+            }
+
+
+        }
         #region クライアント追加/削除関係
         /// <summary>
         /// ClientItemにデータ追加＋GUI更新
@@ -429,25 +714,33 @@ namespace Kagamin2
         /// <param name="_cd"></param>
         public void AddClient(ClientData _cd)
         {
-            string _hostname = "";
-            string _hostip = "";
             ListViewItem _item = new ListViewItem();
+            _item.Text = _cd.Id;                // clmClientViewID
+            _item.SubItems.Add("100%");         //Buffer
+            _item.SubItems.Add(_cd.Ip);         // clmClientViewIP
 
-            try { _hostname = System.Net.Dns.GetHostEntry(_cd.Ip).HostName; }
-            catch { _hostname = _cd.Ip; }
+            try
+            {
+                lock (Gui.ReserveItem)
+                {
+                    foreach (ListViewItem _itemRes in Gui.ReserveItem)
+                    {
+                        if (_itemRes.Text == _cd.Ip)
+                            _item.SubItems[0].ForeColor = System.Drawing.Color.Blue;
+                    }
+                }
+            }
+            catch
+            {
+            }
+            _item.SubItems.Add(_cd.UserAgent);  // clmClientViewUA
+            //_item.SubItems.Add("");             // Work
 
-            if (Front.Opt.EnableResolveHost)
-                _hostip = _hostname;
-            else
-                _hostip = _cd.Ip;
+            _item.SubItems.Add("00:00:00");     // clmClientViewTime
 
-            // clientView.Columnsと同期が必要!!
-            _item.Text = _cd.Id;                // 0:clmClientViewID
-            _item.SubItems.Add(_hostip);        // 1:clmClientViewIpHost
-            _item.SubItems.Add(_cd.UserAgent);  // 2:clmClientViewUA
-            _item.SubItems.Add("00:00:00");     // 3:clmClientViewTime
-            _item.SubItems.Add(_cd.Ip);         // 4:clmClientView_internal_IP
-            _item.SubItems.Add(_hostname);      // 5:clmClientView_internal_Host
+            _item.SubItems.Add(_cd.Host);       //clmClientViewHost
+            _item.SubItems.Add(_cd.ConnInfo);             //KagamiInfo
+            //_item.SubItems.Add("");             // FQDN
             // ClientItemに追加
             lock (Gui.ClientItem)
                 Gui.ClientItem.Add(_item);
@@ -568,35 +861,172 @@ namespace Kagamin2
 
         #region キック関連処理
         /// <summary>
-        /// キックIPをStatus.Gui.KickItem(=Form1.kickView)に新規登録
-        /// Front.KickListに未登録ならそっちにも登録する
-        /// GUIにも通知する
+        /// キックIPを新規登録。登録済みの場合更新
+        /// </summary>
+        /// <param name="_ip">設定するIP</param>
+        /// <param name="_cnt">拒否する時間.0の場合は登録のみ。-1の場合は無制限</param>
+        /// <param name="_user">ユーザー登録フラグ</param>
+        public void AddKick(string _ip, int _time, bool _user)
+        {
+            lock (Kick)
+                lock (Gui.KickItem)
+                {
+                    // ipが正しい形式かのチェックは呼び出し元でやっておくこと。
+
+
+                    try
+                    {
+                        //キックアイテムに含まれているか
+                        if (!CheckKickItem(_ip))
+                        {//含まれていない場合GUIに新規登録
+
+                            //内部Kick管理にない場合登録
+                            if (!Kick.ContainsKey(_ip))
+                            {
+                                Kick[_ip] = new KICK();
+                                Kick[_ip].IP = _ip;
+
+                                if (_time != 0)//0以外の場合拒否中に
+                                    Kick[_ip].KickFlag = true;
+                                else//0の場合登録のみ
+                                    Kick[_ip].KickFlag = false;
+#if DEBUG
+                                Front.AddKickLog(Kagami.Status, "addkick1");
+#endif
+                                Kick[_ip].StartTime = DateTime.Now;
+                                Kick[_ip].Cnt = 0;
+                                Kick[_ip].AutoKick = false;//登録されてない場合は手動登録しかない
+                                Kick[_ip].DenyTime = DateTime.Now;
+                                Kick[_ip].DenyEndTime = _time;
+                            }
+                            else if(_user)//登録済みの場合で手動登録の場合
+                            {
+                                Kick[_ip].AutoKick = _user;
+                                ResetKick(_ip, _time);
+                            }
+
+                            
+                            // KickItemへの登録
+                            ListViewItem _item = new ListViewItem();
+                            _item.Text = _ip;
+
+                            if (_time == 0)
+                                _item.SubItems.Add("-");                // clmKickViewStatus
+                            else
+                                _item.SubItems.Add(_time.ToString());
+
+                            _item.SubItems.Add("1");
+                            Gui.KickItem.Add(_item);
+                            Event.EventUpdateKick(Kagami, _item, 0);
+
+                            Kagami.Status.Client.UpdateKickTime();
+                        }
+                        else
+                        {
+                            if (_user)//手動登録の場合
+                            {
+                                Kick[_ip].AutoKick = _user;
+                                ResetKick(_ip, _time);
+
+                            }
+                            foreach (ListViewItem _item in Gui.KickItem)
+                            {
+                                Event.EventUpdateKick(Kagami, _item, 0);
+
+                            }
+
+                        }
+
+                        // GUIへの反映
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Front.AddLogDebug("AddKick", "内部エラー Trace:" + ex.StackTrace);
+                    }
+                }
+        }
+        /// <summary>
+        /// ハッシュに登録済みのIPに拒否時間をセットする
+        /// 拒否時間が1以上の場合キック中にフラグを切り替える
         /// </summary>
         /// <param name="_ip"></param>
-        /// <param name="_cnt"></param>
-        public void AddKick(string _ip, int _cnt)
+        /// <param name="_denytime"></param>
+        /// <returns></returns>
+        private void ResetKick(string _ip, int _denytime)
         {
-            // ipが正しい形式かのチェックは呼び出し元でやっておくこと。
-            try
-            {
-                // Front.KickListへの登録
-                if (!Front.KickList.ContainsKey(_ip))
-                    Front.KickList.Add(_ip, DateTime.Now + ",1");
-                // KickItemへの登録
-                ListViewItem _item = new ListViewItem();
-                _item.Text = _ip;
-                _item.SubItems.Add("-");                // clmKickViewStatus
-                _item.SubItems.Add(_cnt.ToString());    // clmKickViewCount
-                Gui.KickItem.Add(_item);
-                // GUIへの反映
-                Event.EventUpdateKick(Kagami, _item, 0);
-            }
-            catch (Exception ex)
-            {
-                Front.AddLogDebug("AddKick", "内部エラー Trace:" + ex.StackTrace);
-            }
+            Kick[_ip].DenyTime = DateTime.Now;
+            Kick[_ip].DenyEndTime = _denytime;
+            if (_denytime != 0)//0以外の場合拒否中に
+                Kick[_ip].KickFlag = true;
+            else//0の場合登録のみ
+                Kick[_ip].KickFlag = false;
         }
 
+        /// <summary>
+        /// KickItem中にIPがあるかどうか
+        /// </summary>
+        /// <param name="_ip"></param>
+        /// <returns></returns>
+        private bool CheckKickItem(string _ip)
+        {
+            foreach (ListViewItem _item in Gui.KickItem)
+            {
+                if (_item.Text == _ip)
+                    return true;
+
+            }
+            return false;
+
+        }
+        /// <summary>
+        /// 手動キック登録
+        /// </summary>
+        /// <param name="_ip">IP</param>
+        /// <param name="_time">拒否時間</param>
+        public void AddKick(string _ip, int _time)
+        {
+            AddKick(_ip, _time, true);
+
+        }
+        /// <summary>
+        /// 自動キック登録
+        /// </summary>
+        /// <param name="_ip">IP</param>
+        public void AddKick(string _ip)
+        {
+            AddKick(_ip, (int)Front.Kick.KickDenyTime, false);
+
+        }
+        
+        /// <summary>
+        /// 内部キック管理からキックIPを解除.GUIは関係なし
+        /// </summary>
+        /// <param name="_ip">解除するIP</param>
+        public void DelKick(string _ipl)
+        {
+            lock (Kick)
+            {
+                // ipが正しい形式かのチェックは呼び出し元でやっておくこと。
+                try
+                {
+                    if (!Kick.ContainsKey(_ipl))
+                        return;//含まれていない場合は何もしない
+
+                    
+
+                    Kick[_ipl].KickFlag = false;
+                    Kick[_ipl].DenyEndTime = 0;
+                    Kick[_ipl].Cnt = 0;
+
+                }
+                catch (Exception ex)
+                {
+                    Front.AddLogDebug("DelKick", "内部エラー Trace:" + ex.StackTrace);
+                }
+
+            }
+        }
         /// <summary>
         /// Kick対象のIPか判定する。Kick対象で無ければtrue返却
         /// </summary>
@@ -604,97 +1034,152 @@ namespace Kagamin2
         /// <returns></returns>
         public bool IsKickCheck(System.Net.Sockets.Socket sock)
         {
-            string _ip = ((IPEndPoint)sock.RemoteEndPoint).Address.ToString();
-
-            //リザーブ登録されていればKickチェック無し
-            lock (Gui.ReserveItem)
-                foreach (ListViewItem _item in Gui.ReserveItem)
-                    if (_item.Text == _ip)
-                        return true;
-
-            //Kickチェックリストに登録済みかチェック
-            if (Front.KickList.ContainsKey(_ip))
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            try
             {
-                //検査終了時間、連続接続回数を取得
-                string[] str = Front.KickList[_ip].Split(',');
-                DateTime _end_tim = DateTime.Parse(str[0]);
-                int _con_cnt = int.Parse(str[1]);
-                Front.AddLogDebug("KICKチェック", "KickCheckCount:" + str[1]);
-                //連続接続回数が設定回数を超えたかチェック
-                if (_con_cnt > Front.Kick.KickCheckTime)
+                //IPアドレス
+                string _ip = ((IPEndPoint)sock.RemoteEndPoint).Address.ToString();
+
+                //リザーブ登録されていればKickチェック無し.キック管理も初期化
+                lock (Gui.ReserveItem)
+                    foreach (ListViewItem _item in Gui.ReserveItem)
+                        if (_item.Text == _ip)
+                        {
+                            if (Kick.ContainsKey(_ip))
+                            {
+                                Kick[_ip].DenyEndTime = 0;
+                                Kick[_ip].Cnt = 0;
+                                Kick[_ip].KickFlag = false;
+                            }
+                            return true;
+
+                        }
+
+
+
+                //KickList中にIPがあるかチェック
+                //含まれてない場合キック対象ではない
+                if (!Kick.ContainsKey(_ip))
                 {
-                    //検査期間内に超えたのかチェック
-                    if (DateTime.Now < _end_tim)
-                    {
-                        //検査期間内に超えたのでブロック開始
-                        //ブロック終了時間を設定
-                        Front.KickList[_ip] = DateTime.Now.AddSeconds(Front.Kick.KickDenyTime).ToString() + ",0";
-                        Front.AddLogDebug("KICKチェック", "KickCheckResult:KickStart");
-                        return false;
-                    }
-                    else
-                    {
-                        //検査期間超過後に超えたので最初からカウントしなおし
-                        Front.KickList[_ip] = DateTime.Now.AddSeconds(Front.Kick.KickCheckSecond).ToString() + ",1";
-                        Front.AddLogDebug("KICKチェック", "KickCheckResult:CountReset");
-                        return true;
-                    }
+                    //なければ新規登録
+                    KICK Kick_Client = new KICK();
+                    Kick_Client.IP = _ip;
+                    Kick_Client.KickFlag = false;
+                    Kick_Client.StartTime = DateTime.Now;
+                    Kick_Client.Cnt = 1;
+                    Kick_Client.Cnt_out = 0;
+                    Kick_Client.AutoKick = false;
+#if DEBUG
+                    Front.AddKickLog(Kagami.Status, "Iskickccheck1");
+#endif
+                    Kick_Client.DenyTime = DateTime.Now;
+                    Kick_Client.DenyEndTime = 0; ;
+
+                    //ハッシュに登録
+                    Kick[_ip] = Kick_Client;
+                    return true;
                 }
-                //ブロック中
-                else if (_con_cnt == 0)
-                {
-                    // ブロック期間中のアクセスかチェック
-                    if (DateTime.Now < _end_tim)
-                    {
-                        //拒否時間内
-                        Front.AddLogDebug("KICKチェック", "KickCheckResult:KickPeriodNow");
-                        return false;
-                    }
-                    else
-                    {
-                        //拒否時間超過、始めからカウントしなおし
-                        Front.KickList[_ip] = DateTime.Now.AddSeconds(Front.Kick.KickCheckSecond).ToString() + ",1";
-                        Front.AddLogDebug("KICKチェック", "KickCheckResult:KickPeriodEnd");
-                        return true;
-                    }
-                }
-                //無期限ブロック中
-                else if (_con_cnt < 0)
-                {
-                    return false;
-                }
-                //設定回数を越える前
                 else
-                {
-                    //検査期間を超えたかチェック
-                    if (DateTime.Now < _end_tim)
+                {//含まれてる場合
+
+                    //KICK _kick = Kick[_ip];
+
+                    //キック中の場合
+                    if (Kick[_ip].KickFlag)
                     {
-                        //検査期間を超えていなければ連続接続回数カウントアップ
-                        Front.KickList[_ip] = _end_tim.ToString() + "," + (_con_cnt + 1);
-                        Front.AddLogDebug("KICKチェック", "KickCheckResult:CountUp");
-                        return true;
-                    }
+
+                            //キック時間無制限
+                            if (Kick[_ip].DenyEndTime < 0)
+                            {
+                                Kick[_ip].Cnt++;
+                                Kick[_ip].Cnt_out++;
+                                return false;
+                            }
+
+                            //拒否終了時刻を過ぎている場合リセット
+                            if (Kick[_ip].DenyTime.AddSeconds(Kick[_ip].DenyEndTime) < DateTime.Now)
+                            {
+                                Kick[_ip].KickFlag = false;
+                                Kick[_ip].StartTime = DateTime.Now;
+                                Kick[_ip].Cnt = 0;
+#if DEBUG
+                                Front.AddKickLog(Kagami.Status, "Iskickccheck2");
+#endif
+
+                                return true;
+                            }
+                            else
+                            {//拒否時間中の場合接続試行回数を増やし終了
+                                //Kick[_ip].Cnt++;
+                                Kick[_ip].Cnt_out++;
+                                return false;
+
+                            }
+                        
+
+                    }//キック中でない場合
                     else
                     {
-                        //検査期間を超えていれば最初からカウントアップ
-                        Front.KickList[_ip] = DateTime.Now.AddSeconds(Front.Kick.KickCheckSecond).ToString() + ",1";
-                        Front.AddLogDebug("KICKチェック", "KickCheckResult:CountReset");
-                        return true;
+
+
+                        try
+                        {
+                            //りせっと時間に達していない
+                            if (Kick[_ip].ResetTime > DateTime.Now)
+                            {
+                                //キック回数に到達の場合キック開始
+                                if (Kick[_ip].Cnt >= Front.Kick.KickCheckTime)
+                                {
+                                    Kick[_ip].DenyTime = DateTime.Now;
+                                    Kick[_ip].DenyEndTime = (int)Front.Kick.KickDenyTime;
+                                    Kick[_ip].Cnt = 0;
+                                    Kick[_ip].Cnt_out++;
+                                    Kick[_ip].KickFlag = true;
+                                    AddKick(_ip);
+
+
+
+                                    return false;
+
+                                }
+                                else//キック回数に到達していない場合は回数を+1
+                                {
+                                    Kick[_ip].Cnt++;
+
+                                    return true;
+
+                                }
+
+                            }
+                            else//リセット時間に達しているリセット
+                            {
+                                Kick[_ip].Cnt = 0;
+                                Kick[_ip].StartTime = DateTime.Now;
+                                Kick[_ip].KickFlag = false;
+                                return true;
+                            }
+                        }
+                        finally
+                        {
+
+                        }
+
+
                     }
+
                 }
             }
-            else
+            finally
             {
-                // 新規にKickチェックリストに登録
-                // 検査終了時間をリスト登録する
-                Front.AddLogDebug("KICKチェック", "KickCheckResult:AddNewHost");
-                Front.KickList.Add(_ip, DateTime.Now.AddSeconds(Front.Kick.KickCheckSecond).ToString() + ",1");
-                return true;
+                sw.Stop();
+                //Front.AddLogData(1, this, "1:" + sw.ElapsedMilliseconds);
+
             }
-            // ここには来ない
         }
 
         #endregion
 
     }
+
 }

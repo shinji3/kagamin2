@@ -72,6 +72,7 @@ namespace Kagamin2
         /// 接続枠(リザーブ枠)
         /// </summary>
         public uint Resv;
+
     }
 
     #region Import/ExportタスクからGUIへのイベント通知ハンドラ
@@ -304,10 +305,6 @@ namespace Kagamin2
             /// アイコンインデックス
             /// </summary>
             public uint IconIndex;
-            /// <summary>
-            /// 最小化時にタスクトレイに常駐する
-            /// </summary>
-            public bool EnableTrayIcon;
         }
         static public FORM Form;
 
@@ -325,9 +322,25 @@ namespace Kagamin2
             /// </summary>
             public List<string> FavoriteList;
             /// <summary>
+            /// お気に入りのリザーブリスト
+            /// </summary>
+            public List<string> ReserveList;
+            /// <summary>
+            /// 各ポートの接続数設定保存用
+            /// </summary>
+            public Dictionary<int, int> Conn_NumList;
+            /// <summary>
+            /// 各ポートのリザーブ数設定保存用
+            /// </summary>
+            public Dictionary<int, int> Reserve_NumList;
+            /// <summary>
             /// GUI上のポートリスト
             /// </summary>
             public List<int> PortList;
+            /// <summary>
+            /// スケジュール接続数セット
+            /// </summary>
+            public List<int> SetList;
             /// <summary>
             /// GUI上のデフォルト通常接続数
             /// </summary>
@@ -369,6 +382,33 @@ namespace Kagamin2
             /// グローバルIPが書いてある行番号
             /// </summary>
             public uint IPCheckLine;
+            /// <summary>
+            /// 起動時に自動的にエントランスを起動するか
+            /// </summary>
+            public bool HPstartON;
+            /// <summary>
+            /// 起動時にポート待ち受けをするかどうか
+            /// </summary>
+            public bool PortstartON;
+            /// <summary>
+            /// 起動時に待機状態にするポートリスト
+            /// </summary>
+            public List<int> StartPortList;
+
+            /// <summary>
+            /// HP認証のユーザー名
+            /// </summary>
+            public string AuthUser;
+            /// <summary>
+            /// HP認証のパスワード
+            /// </summary>
+            public string AuthPass;
+            /// <summary>
+            /// HP_Basic認証を行うか
+            /// </summary>
+            public bool AuthEnable;
+            public bool allh;
+            public bool porth;
         }
         static public HP Hp;
 
@@ -397,6 +437,18 @@ namespace Kagamin2
             /// ソケット切断までの遅延時間(ms)
             /// </summary>
             public uint SockCloseDelay;
+            /// <summary>
+            /// UPnP有効フラグ
+            /// </summary>
+            public bool upnp;
+            /// <summary>
+            /// ホスト限定
+            /// </summary>
+            public bool VirtualHost;
+            /// <summary>
+            /// ビジーチェッカー人数情報送信
+            /// </summary>
+            public bool ConnInfoSend;
         }
         static public SOCK Sock;
 
@@ -465,6 +517,10 @@ namespace Kagamin2
             /// 管理者モードパスワード
             /// </summary>
             public string AdminPass;
+            /// <summary>
+            /// WMPコンポーネントプレビューON
+            /// </summary>
+            public bool ViewWMP;
 /*
             /// <summary>
             /// /rss.rdf有効フラグ
@@ -494,15 +550,122 @@ namespace Kagamin2
             ///<summary>
             /// 実況URL制限
             ///</summary>
-            public string OutUrl;
+            public List<string> OutUrl;
+
+            public string OutUrlstr
+            {
+                get
+                {
+                    string str = "";
+                    foreach (string _str in OutUrl)
+                        str += _str+",";
+                    if (str.Length >= 1)
+                        str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
+                    return str;
+                }
+            }
+            public bool OutUrlContain(string _c)
+            {
+                foreach (string _str in OutUrl)
+                {
+                    try
+                    {
+                        Regex re = new Regex(_str);
+                        if (re.IsMatch(_c))
+                            return true;
+                    }
+                    catch { }
+                    if (_c.StartsWith(_str))
+                        return true;
+                }
+                return false;
+
+            }
+
             /// <summary>
             /// アプリケーションネーム。バージョン後に付記
             /// </summary>
             public string AppName;
+
             /// <summary>
-            /// ドメイン名解決有効フラグ
+            /// 子鏡へ転送を行うか
             /// </summary>
-            public bool EnableResolveHost;
+            public bool TransKagamin;
+            /// <summary>
+            /// 自分への転送を許可しないか
+            /// </summary>
+            public bool NotMyTrans;
+            /// <summary>
+            /// 転送階層深さ
+            /// </summary>
+            public uint TransCont;
+            /// <summary>
+            /// インポートのリダイレクトを許可するか
+            /// </summary>
+            public bool ImportRedirect;
+            /// <summary>
+            /// 最小化時にタスクトレイへ入れるか
+            /// </summary>
+            public bool InTrayOn;
+
+            /*
+            /// <summary>
+            /// MySQLのホスト
+            /// </summary>
+            public string HostMySQL;
+            /// <summary>
+            /// MySQLのユーザー名
+            /// </summary>
+            public string UserMuSQL;
+            /// <summary>
+            /// MySQLのパスワード
+            /// </summary>
+            public string PassMySQL;
+            /// <summary>
+            /// MySQL呼び出し列
+            /// </summary>
+            public string ReadRowMySQL;
+            /// <summary>
+            /// MySQL呼び出し列(IP)
+            /// </summary>
+            public string ReadRowIPMySQL;
+            /// <summary>
+            /// MySQL連携有効
+            /// </summary>
+            public bool MySQLEnable;
+            /// <summary>
+            /// 接続データベース名
+            /// </summary>
+            public string RearDB;
+            /// <summary>
+            /// 読み出し表名
+            /// </summary>
+            public string ReadHyou;
+            */
+            /// <summary>
+            /// 日別転送量リセット時刻
+            /// </summary>
+            public string ResetDayTime;
+            /// <summary>
+            /// IP確認不可時にエラーを出すか(true=on)
+            /// </summary>
+            public bool NotDialogIPError;
+            /// <summary>
+            /// Web側Kick設定有効
+            /// </summary>
+            public bool WebKick;
+            /// <summary>
+            /// エクスポート認証ID
+            /// </summary>
+            public string AuthID;
+            /// <summary>
+            /// エクスポード認証パスワード
+            /// </summary>
+            public string AuthPass;
+            /// <summary>
+            /// Webよりエクスポート認証を有効にするか
+            /// </summary>
+            public bool AuthWebSet;
         }
         static public OPT Opt;
 
@@ -591,6 +754,23 @@ namespace Kagamin2
             public List<string> DenyImportURL;
 
             /// <summary>
+            /// WebABCUA
+            /// </summary>
+            public List<string> CheckUserAgent;
+
+            /// <summary>
+            /// 制限ログイン失敗回数
+            /// </summary>
+            public uint FailureCount;
+            /// <summary>
+            ///クローズ設置向け設定パスワード
+            /// </summary>
+            public string ClosedPassward;
+            /// <summary>
+            /// クローズ失敗設定コメント
+            /// </summary>
+            public string ClosedComment;
+            /// <summary>
             /// 同一ImportURL接続制限
             /// 0:制限なし 1～:指定数まで許可
             /// </summary>
@@ -625,16 +805,58 @@ namespace Kagamin2
             /// 0:制限なし 1～:指定数まで許可
             /// </summary>
             public uint LimitSameClient;
-
             /// <summary>
-            /// 待機中ポートがあれば自動解放しない
+            /// 転送量制限有効フラグ
             /// </summary>
-            public bool PortFullOnlyCheck;
-
+            public bool StopFlag;
+            /// <summary>
+            /// DL転送量含む
+            /// </summary>
+            public bool DLContainFlag;
+            /// <summary>
+            /// 制限転送量（MB）
+            /// </summary>
+            public uint StopMB;
+            /// <summary>
+            /// 制限転送量単位(0=MB,1=GB,2=TB)
+            /// </summary>
+            public uint StopMBSelect;
+            /// <summary>
+            /// 日別選択(Day=0,Week=1,Month=2)
+            /// </summary>
+            ///public uint StopDaySelect;
+            /// <summary>
+            /// 転送量到達後動作指定
+            /// </summary>
+            public uint StopSelect;
+            /// <summary>
+            /// 過去24時間のトラフィック。分単位
+            /// </summary>
+            public long[] TrafficTFHour;
+            /// <summary>
+            /// 過去２４時間基準有効(0=無効,1=一時ファイル保存,制限無効,2= 1と制限有効)
+            /// </summary>
+            public uint TrafficHour;
+            /// <summary>
+            /// 土日割り当て増加有効
+            /// </summary>
+            ///public bool SunDayUP;
             /// <summary>
             /// インポートURLと設定者IPの一致チェック有効フラグ
             /// </summary>
             public bool SetUserIpCheck;
+            /// <summary>
+            /// 待機中ポートがあれば開放しない
+            /// </summary>
+            public bool PortFullOnlyCheck;
+            /// <summary>
+            /// 接続禁止ホスト
+            /// </summary>
+            public List<string> DenyHost;
+            /// <summary>
+            /// 接続禁止UA
+            /// </summary>
+            public List<string> DenyUA;
         }
         static public ACL Acl;
 
@@ -663,6 +885,10 @@ namespace Kagamin2
             /// 帯域制限時のリザーブ数考慮フラグ
             /// </summary>
             public bool BandStopResv;
+            /// <summary>
+            /// 起動時に待機するポートの帯域制限値
+            /// </summary>
+            public Dictionary<int,int> PortBandWidth;
         }
         static public BNDWTH BndWth;
 
@@ -711,7 +937,6 @@ namespace Kagamin2
         /// 1:重要ログのみ表示
         /// </summary>
         static public int LogMode = 0;
-
         // clientView,ClientItem内ListViewItemのIndex
         /// <summary>
         /// clmClientViewID.DisplayIndex
@@ -737,16 +962,27 @@ namespace Kagamin2
         /// clmClientView_internal_HOST.DisplayIndex
         /// </summary>
         static public int clmCV_HO_IDX = 0;
-
+        /// <summary>
+        /// clmClientViewBuffer.DisplayIndex
+        /// </summary>
+        static public int clmCV_BU_IDX = 0;
+        /// <summary>
+        /// 鏡状態ディスプレイインデックス
+        /// </summary>
+        static public int clmCV_KI_IDX = 0;
+        /// <summary>
+        /// 1スレッドで送信を行うくらいクライアント数
+        /// </summary>
+        static public int ClientToThread = 10;
         /// <summary>
         /// 鏡インスタンス一覧
         /// </summary>
         static public List<Kagami> KagamiList = new List<Kagami>();
 
         /// <summary>
-        /// KickIP管理リスト
+        /// KickIP管理リスト(Statusごとに切り替え)
         /// </summary>
-        static public Dictionary<String, String> KickList = new Dictionary<string,string>();
+        ///static public Dictionary<String, String> KickList = new Dictionary<string,string>();
 
         /// <summary>
         /// 総UP転送量
@@ -756,11 +992,54 @@ namespace Kagamin2
         /// 総DL転送量
         /// </summary>
         static public ulong TotalDL = 0;
-
+        ///<summary>
+        /// 日別UP転送量
+        /// </summary>
+        static public ulong DayUP = 0;
+        /// <summary>
+        /// 24時間累計転送量
+        /// </summary>
+        static public ulong HourUP = 0;
+        /// <summary>
+        /// 設定転送量(MB)
+        /// </summary>
+        ///static public ulong SetTraffic = 0;
+        /// <summary>
+        /// 
+        /// </summary>
+        static public ulong DayUPSet = 0;
+        /// <summary>
+        /// 分単位転送量(MB)0-59sec
+        /// </summary>
+        static public uint MinUPSet = 0;
+        /// <summary>
+        /// トラフィック起動管理用
+        /// </summary>
+        static public bool Traffic = false;
+        /// <summary>
+        /// 土日増加割合(標準30%)
+        /// </summary>
+        ///static public uint SunUPPer = 30;
+        /// <summary>
+        /// admin/dis指定回数失敗アクセス制限用
+        /// </summary>
+        static public List<string> FailureLogin = new List<string>();
+        /// <summary>
+        /// ログイン失敗DenyIP
+        /// </summary>
+        static public List<string> DenyLogin = new List<string>();
+        /// <summary>
+        /// UPnPで閉じる必要のあるポート
+        /// </summary>
+        static public List<int> UPnPPort = new List<int>();
         /// <summary>
         /// HP開始状態フラグ
         /// </summary>
         static public bool HPStart = false;
+        /// <summary>
+        /// 認証ダイアログ排他使用フラグ(true=Import,false=Export)
+        /// </summary>
+        static public bool AuthDiagflag = true;
         /// <summary>
         /// HP用HybridDSPインスタンス
         /// </summary>
@@ -768,7 +1047,6 @@ namespace Kagamin2
 
         // ASF GUID
         static public Dictionary<string, string> ASF_GUID = new Dictionary<string, string>();
-
         /// <summary>
         /// 美人メッセージ
         /// </summary>
@@ -781,6 +1059,33 @@ namespace Kagamin2
             "Content-Type: text/html\r\n\r\n" +
             "<html><head><title>503 Service Unavailable</title></head>\r\n" +
             "<body><h1>503 Service Unavailable</h1></body></html>\r\n";
+        static public string AuthString_ = "HTTP/1.0 401 Authorization Required\r\n" +
+            "Date: DATE_NOW_REPLACE \r\n" +
+            "Server: Rex/10.0.0.3650\r\n" +
+            "WWW-Authenticate: Basic realm=\"Secret File\"\r\n" +
+            "Cache-Control: no-cache\r\n" +
+            "Connection: close\r\n" +
+            "Content-Type: text/html; charset=iso-8859-1\r\n" +
+            "<!DOCTYPE HTML PUBLIC \" -//IETF//DTD HTML 2.0//EN\">\r\n"+
+            "<html><head>\r\n" +
+            "<title>401 Authorization Required</title>\r\n" +
+            "</head><body>\r\n" +
+            "<h1>Authorization Required</h1>\r\n" +
+            "<p>This server could not verify that you\r\n" +
+            "are authorized to access the document requested.</p>\r\n";
+        static public string KagamiLinkRes
+        {
+            get
+            {
+                return "KAGAMI/1.0 200 OK\r\n" + "Server: " + AppName + "\r\n\r\n";
+            }
+        }
+        static public string AuthString()
+        {
+            return AuthString_.Replace("DATE_NOW_REPLACE", DateTime.Now.ToString("r"));
+
+
+        }
         /// <summary>
         /// 帯域制限方式
         /// </summary>
@@ -800,15 +1105,15 @@ namespace Kagamin2
         /// スケジュール起動イベント
         /// </summary>
         static public string[] ScheduleEventString = {
-            "エントランス起動",
-            "エントランス停止",
+            "エントランスサーバ起動",
+            "エントランスサーバ停止",
             "新規受付開始",
             "新規受付停止",
             "強制切断",
-            "ポート待受開始",
-            "ポート待受停止",
-            "接続枠数変更"
-        };
+            "ポート待ち受け開始",
+            "ポート待ち受け停止",
+        　　"鏡終了後待受停止",
+            "接続枠数変更"};
         static public string[] ScheduleWeekString = {
             "日曜",
             "月曜",
@@ -829,6 +1134,19 @@ namespace Kagamin2
             "MB",
             "GB"
         };
+        /// <summary>
+        /// 転送量到達フラグ
+        /// </summary>
+        static public bool Attainment = false;
+        
+        /// <summary>
+        /// 最終子鏡転送チェック時間
+        /// </summary>
+        static public DateTime temptrans = DateTime.Now;
+        /// <summary>
+        /// 最終転送ホスト
+        /// </summary>
+        static public string temphost = "";
         #endregion
 
         /// <summary>
@@ -903,6 +1221,8 @@ namespace Kagamin2
         /// </summary>
         static public void LoadSetting()
         {
+
+
             // ウインドウ位置・サイズが読み出せなかった場合の初期値計算
             int x = (int)(System.Windows.Forms.Screen.PrimaryScreen.Bounds.Width - Form.W) / 2; if (x < 0) x = 0;
             int y = (int)(System.Windows.Forms.Screen.PrimaryScreen.Bounds.Height - Form.H) / 2; if (y < 0) y = 0;
@@ -913,16 +1233,33 @@ namespace Kagamin2
             StringBuilder sb = new StringBuilder(1024);
 
             IniFileHandler.GetPrivateProfileString(                         "ACL",      "DENY_HP_IP",           "",     sb, (uint)sb.Capacity, iniFile);    Acl.HpDenyRemoteHost = new List<string>(sb.ToString().Split(','));
+            IniFileHandler.GetPrivateProfileString("ACL", "DENY_CLIENT_IP", "", sb, (uint)sb.Capacity, iniFile); Acl.DenyHost = new List<string>(sb.ToString().Split(','));
+            IniFileHandler.GetPrivateProfileString("ACL", "DENY_CLIENT_UA", "", sb, (uint)sb.Capacity, iniFile); Acl.DenyUA = new List<string>(sb.ToString().Split(','));
+
+            IniFileHandler.GetPrivateProfileString("ACL", "CHECK_UA", "WebABC,JikkyoServerChecker,StatusChecker", sb, (uint)sb.Capacity, iniFile); Acl.CheckUserAgent = new List<string>(sb.ToString().Split(','));
+
             IniFileHandler.GetPrivateProfileString(                         "ACL",      "DENY_IMPORT_URL",      "127.0.0.1,localhost", sb, (uint)sb.Capacity, iniFile); Acl.DenyImportURL = new List<string>(sb.ToString().Split(','));
+            IniFileHandler.GetPrivateProfileString("ACL", "CLOSED_PASSWORD", "", sb, (uint)sb.Capacity, iniFile); Acl.ClosedPassward = sb.ToString();
+            IniFileHandler.GetPrivateProfileString("ACL", "CLOSED_COMMENT", "", sb, (uint)sb.Capacity, iniFile); Acl.ClosedComment = sb.ToString();
             Acl.LimitSameImportURL  = IniFileHandler.GetPrivateProfileInt(  "ACL",      "LIMIT_SAME_IMPORT",    2,      iniFile);
+            Acl.SetUserIpCheck = IniFileHandler.GetPrivateProfileInt("ACL", "SET_USER_IP_CHECK", 0, iniFile) != 0 ? true : false;
             Acl.ImportOutTime       = IniFileHandler.GetPrivateProfileInt(  "ACL",      "LIMIT_IMPORT_OUT",     0,      iniFile);
             Acl.ClientOutCheck      = IniFileHandler.GetPrivateProfileInt(  "ACL",      "ENABLE_CLIENT_OUT",    0,      iniFile) != 0 ? true : false;
+            Acl.ClientNotIPCheck = IniFileHandler.GetPrivateProfileInt("ACL", "ENABLE_CLIENT_NOTIP", 0, iniFile) != 0 ? true : false;
+            Acl.PortFullOnlyCheck = IniFileHandler.GetPrivateProfileInt("ACL", "PORT_FULL_ONLY", 0, iniFile) != 0 ? true : false;
+
+            Acl.StopFlag = IniFileHandler.GetPrivateProfileInt("ACL", "ENABLE_STOPMB", 0, iniFile) != 0 ? true : false;
+            Acl.DLContainFlag = IniFileHandler.GetPrivateProfileInt("ACL", "ENABLE_CONDL", 0, iniFile) != 0 ? true : false;
+            Acl.StopSelect = IniFileHandler.GetPrivateProfileInt("ACL", "STOP_SYSTEM", 0, iniFile);
+            Acl.StopMB = IniFileHandler.GetPrivateProfileInt("ACL", "STOP_MB", 25600, iniFile);
+            Acl.StopMBSelect = IniFileHandler.GetPrivateProfileInt("ACL", "MB_SELECT", 1, iniFile);
+            //Acl.StopDaySelect = IniFileHandler.GetPrivateProfileInt("ACL", "DAY_SELECT", 0, iniFile);
+            //Acl.SunDayUP = IniFileHandler.GetPrivateProfileInt("ACL", "SUNDAY_UP", 0, iniFile) != 0 ? true : false;
+
             Acl.ClientOutNum        = IniFileHandler.GetPrivateProfileInt(  "ACL",      "LIMIT_CLIENT_NUM",     0,      iniFile);
             Acl.ClientOutTime       = IniFileHandler.GetPrivateProfileInt(  "ACL",      "LIMIT_CLIENT_TIME",    10,     iniFile);
-            Acl.ClientNotIPCheck    = IniFileHandler.GetPrivateProfileInt(  "ACL",      "ENABLE_CLIENT_NOTIP",  0,      iniFile) != 0 ? true : false;
             Acl.LimitSameClient     = IniFileHandler.GetPrivateProfileInt(  "ACL",      "LIMIT_SAME_CLIENT",    0,      iniFile);
-            Acl.PortFullOnlyCheck   = IniFileHandler.GetPrivateProfileInt(  "ACL",      "PORT_FULL_ONLY",       0,      iniFile) != 0 ? true : false;
-            Acl.SetUserIpCheck      = IniFileHandler.GetPrivateProfileInt(  "ACL",      "SET_USER_IP_CHECK",    0,      iniFile) != 0 ? true : false;
+            Acl.FailureCount = IniFileHandler.GetPrivateProfileInt("ACL", "LIMIT_LOGIN_COUNT", 5, iniFile);
 
             BndWth.EnableBandWidth  = IniFileHandler.GetPrivateProfileInt(  "BNDWTH",   "ENABLE",               0,      iniFile) != 0 ? true : false;
             BndWth.BandStopMode     = IniFileHandler.GetPrivateProfileInt(  "BNDWTH",   "MODE",                 0,      iniFile);
@@ -936,7 +1273,7 @@ namespace Kagamin2
             IniFileHandler.GetPrivateProfileString(                         "FORM",     "W",                    w.ToString(),   sb, (uint)sb.Capacity, iniFile);    try { Form.W = int.Parse(sb.ToString()); } catch { Form.W = 600; }
             IniFileHandler.GetPrivateProfileString(                         "FORM",     "H",                    h.ToString(),   sb, (uint)sb.Capacity, iniFile);    try { Form.H = int.Parse(sb.ToString()); } catch { Form.H = 400; }
             Form.SplitDistance1     = IniFileHandler.GetPrivateProfileInt(  "FORM",     "SPLIT1",               190,    iniFile);
-            Form.SplitDistance2     = IniFileHandler.GetPrivateProfileInt(  "FORM",     "SPLIT2",               195,    iniFile);
+            Form.SplitDistance2     = IniFileHandler.GetPrivateProfileInt(  "FORM",     "SPLIT2",               150,    iniFile);
             Form.LeftPanelCollapsed = IniFileHandler.GetPrivateProfileInt(  "FORM",     "LP_COLLAPSED",         1,      iniFile) != 0 ? true : false;
             IniFileHandler.GetPrivateProfileString(                         "FORM",     "CLM_KAGAMI",           "",     sb, (uint)sb.Capacity, iniFile);    Form.KagamiListColumn   = sb.ToString();
             IniFileHandler.GetPrivateProfileString(                         "FORM",     "CLM_MONALL",           "",     sb, (uint)sb.Capacity, iniFile);    Form.MonAllViewColumn   = sb.ToString();
@@ -949,11 +1286,10 @@ namespace Kagamin2
             Form.monViewUnit        = IniFileHandler.GetPrivateProfileInt(  "FORM",     "MON_UNIT",             0,      iniFile);
             Form.IconIndex          = IniFileHandler.GetPrivateProfileInt(  "FORM",     "ICON",                 0,      iniFile);
             if (Form.IconIndex >= 3) Form.IconIndex = 0;    // 念のためガード
-            Form.EnableTrayIcon     = IniFileHandler.GetPrivateProfileInt(  "FORM",     "ENABLE_TRAY_ICON",     1,      iniFile) != 0 ? true : false;
-
 
             IniFileHandler.GetPrivateProfileString(                         "GUI",      "IMPORT_URL",           "",     sb, (uint)sb.Capacity, iniFile);    Gui.ImportURL = sb.ToString();
             IniFileHandler.GetPrivateProfileString(                         "GUI",      "FAVORITE_LIST",        "",     sb, (uint)sb.Capacity, iniFile);    Gui.FavoriteList = new List<string>(sb.ToString().Split(','));
+            IniFileHandler.GetPrivateProfileString(                         "GUI",      "RESERVE_LIST",         "",     sb, (uint)sb.Capacity, iniFile);    Gui.ReserveList = new List<string>(sb.ToString().Split(','));
             IniFileHandler.GetPrivateProfileString(                         "GUI",      "PORT_LIST",            "8080", sb, (uint)sb.Capacity, iniFile);
             Gui.PortList = new List<int>();
             foreach (string s in sb.ToString().Split(','))
@@ -965,10 +1301,101 @@ namespace Kagamin2
                 }
                 catch { }
             }
+ 
+            IniFileHandler.GetPrivateProfileString("HP", "START_PORTLIST", "", sb, (uint)sb.Capacity, iniFile);
+
+            Hp.StartPortList = new List<int>();
+            foreach (string s in sb.ToString().Split(','))
+            {
+                try
+                {
+                    int i = int.Parse(s);
+                    Hp.StartPortList.Add(i);
+                }
+                catch { }
+            }
+
+            IniFileHandler.GetPrivateProfileString("GUI", "SET_LIST", "", sb, (uint)sb.Capacity, iniFile);
+            Gui.SetList = new List<int>();
+            foreach (string s in sb.ToString().Split(','))
+            {
+                try
+                {
+                    int i = int.Parse(s);
+                    Gui.SetList.Add(i);
+                }
+                catch
+                {
+                    Gui.SetList.Clear();
+
+                    break;
+                }
+            }
+
+            IniFileHandler.GetPrivateProfileString("GUI", "BAND_PORT_WIDTH", "", sb, (uint)sb.Capacity, iniFile);
+            BndWth.PortBandWidth = new Dictionary<int,int>();
+            string[] _str1= sb.ToString().Split(',');
+            for (int i = 0; i < _str1.Length; i++)
+            {
+                try
+                {
+                    int j = int.Parse(_str1[i]);
+                    BndWth.PortBandWidth.Add(j, int.Parse(_str1[++i]));
+
+                }
+                catch
+                {
+                    BndWth.PortBandWidth.Clear();
+                    break;
+                }
+            }
+
+            IniFileHandler.GetPrivateProfileString("GUI", "PORT_CONN", "", sb, (uint)sb.Capacity, iniFile);
+            Gui.Conn_NumList = new Dictionary<int, int>();
+            _str1 = null;
+            _str1 = sb.ToString().Split(',');
+            for (int i = 0; i < _str1.Length; i++)
+            {
+                try
+                {
+                    int j = int.Parse(_str1[i]);
+                    Gui.Conn_NumList.Add(j, int.Parse(_str1[++i]));
+
+                }
+                catch
+                {
+                    Gui.Conn_NumList.Clear();
+                    break;
+                }
+            }
+
+            IniFileHandler.GetPrivateProfileString("GUI", "PORT_RESERVE", "", sb, (uint)sb.Capacity, iniFile);
+            Gui.Reserve_NumList = new Dictionary<int, int>();
+            _str1 = null;
+            _str1 = sb.ToString().Split(',');
+            for (int i = 0; i < _str1.Length; i++)
+            {
+                try
+                {
+                    int j = int.Parse(_str1[i]);
+                    Gui.Reserve_NumList.Add(j, int.Parse(_str1[++i]));
+
+                }
+                catch
+                {
+                    Gui.Reserve_NumList.Clear();
+                    break;
+                }
+            }
+
             Gui.Conn                = IniFileHandler.GetPrivateProfileInt(  "GUI",      "CONN",                 50,     iniFile);
             Gui.Reserve             = IniFileHandler.GetPrivateProfileInt(  "GUI",      "RESV",                 3,      iniFile);
 
             Hp.UseHP                = IniFileHandler.GetPrivateProfileInt(  "HP",       "USE_HP",               0,      iniFile) != 0 ? true : false;
+            Hp.AuthEnable = IniFileHandler.GetPrivateProfileInt("HP", "AUTH_ENABLE", 0, iniFile) != 0 ? true : false;
+            IniFileHandler.GetPrivateProfileString("HP", "AUTH_PASS", "", sb, (uint)sb.Capacity, iniFile); Hp.AuthPass = sb.ToString();
+            IniFileHandler.GetPrivateProfileString("HP", "AUTH_USER", "", sb, (uint)sb.Capacity, iniFile); Hp.AuthUser = sb.ToString();
+ 
             IniFileHandler.GetPrivateProfileString(                         "HP",       "HOSTNAME",             "http://localhost", sb, (uint)sb.Capacity, iniFile);    Hp.IpHTTP = sb.ToString();
             Hp.PortHTTP             = IniFileHandler.GetPrivateProfileInt(  "HP",       "PORT",                 8888,   iniFile);
             IniFileHandler.GetPrivateProfileString(                         "HP",       "PUBLIC_DIR",           "",     sb, (uint)sb.Capacity, iniFile);    Hp.PublicDir = sb.ToString();
@@ -979,18 +1406,24 @@ namespace Kagamin2
 #endif
             Hp.IPCheckLine          = IniFileHandler.GetPrivateProfileInt(  "HP",       "IP_CHECK_LINE",        4,      iniFile);
 
+            Hp.HPstartON = IniFileHandler.GetPrivateProfileInt("HP", "HP_START", 0, iniFile) != 0 ? true : false;
+            Hp.PortstartON = IniFileHandler.GetPrivateProfileInt("HP", "PORT_START", 0, iniFile) != 0 ? true : false;
+
+            Hp.allh = IniFileHandler.GetPrivateProfileInt("HP", "ALL_H", 0, iniFile) != 0 ? true : false;
+            Hp.porth = IniFileHandler.GetPrivateProfileInt("HP", "PORT_H", 0, iniFile) != 0 ? true : false;
+
             Kick.KickCheckSecond    = IniFileHandler.GetPrivateProfileInt(  "KICK",     "CHECK_SECOND",         10,     iniFile);
             Kick.KickCheckTime      = IniFileHandler.GetPrivateProfileInt(  "KICK",     "CHECK_TIME",           7,      iniFile);
             Kick.KickDenyTime       = IniFileHandler.GetPrivateProfileInt(  "KICK",     "DENY_TIME",            60,     iniFile);
-            
-            IniFileHandler.GetPrivateProfileString(                         "LOG",      "FILE1",                "",     sb, (uint)sb.Capacity, iniFile);    Log.HpLogFile = sb.ToString();
-            IniFileHandler.GetPrivateProfileString(                         "LOG",      "FILE2",                "",     sb, (uint)sb.Capacity, iniFile);    Log.KagamiLogFile = sb.ToString();
-            Log.LogDetail           = IniFileHandler.GetPrivateProfileInt(  "LOG",      "ENABLE_DETAIL",        0,      iniFile) != 0 ? true : false;
-            IniFileHandler.GetPrivateProfileString(                         "LOG",      "TRS_UP_DAY",           "0",    sb, (uint)sb.Capacity, iniFile);    Log.TrsUpDay = ulong.Parse(sb.ToString());
-            IniFileHandler.GetPrivateProfileString(                         "LOG",      "TRS_DL_DAY",           "0",    sb, (uint)sb.Capacity, iniFile);    Log.TrsDlDay = ulong.Parse(sb.ToString());
-            IniFileHandler.GetPrivateProfileString(                         "LOG",      "TRS_UP_MON",           "0",    sb, (uint)sb.Capacity, iniFile);    Log.TrsUpMon = ulong.Parse(sb.ToString());
-            IniFileHandler.GetPrivateProfileString(                         "LOG",      "TRS_DL_MON",           "0",    sb, (uint)sb.Capacity, iniFile);    Log.TrsDlMon = ulong.Parse(sb.ToString());
-            IniFileHandler.GetPrivateProfileString(                         "LOG",      "LAST_UPDATE",          "",     sb, (uint)sb.Capacity, iniFile);    Log.LastUpdate = sb.ToString();
+
+            IniFileHandler.GetPrivateProfileString("LOG", "FILE1", "", sb, (uint)sb.Capacity, iniFile); Log.HpLogFile = sb.ToString();
+            IniFileHandler.GetPrivateProfileString("LOG", "FILE2", "", sb, (uint)sb.Capacity, iniFile); Log.KagamiLogFile = sb.ToString();
+            Log.LogDetail = IniFileHandler.GetPrivateProfileInt("LOG", "ENABLE_DETAIL", 0, iniFile) != 0 ? true : false;
+            IniFileHandler.GetPrivateProfileString("LOG", "TRS_UP_DAY", "0", sb, (uint)sb.Capacity, iniFile); Log.TrsUpDay = ulong.Parse(sb.ToString());
+            IniFileHandler.GetPrivateProfileString("LOG", "TRS_DL_DAY", "0", sb, (uint)sb.Capacity, iniFile); Log.TrsDlDay = ulong.Parse(sb.ToString());
+            IniFileHandler.GetPrivateProfileString("LOG", "TRS_UP_MON", "0", sb, (uint)sb.Capacity, iniFile); Log.TrsUpMon = ulong.Parse(sb.ToString());
+            IniFileHandler.GetPrivateProfileString("LOG", "TRS_DL_MON", "0", sb, (uint)sb.Capacity, iniFile); Log.TrsDlMon = ulong.Parse(sb.ToString());
+            IniFileHandler.GetPrivateProfileString("LOG", "LAST_UPDATE", "", sb, (uint)sb.Capacity, iniFile); Log.LastUpdate = sb.ToString();
 
             Opt.BrowserView         = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_BROWSER_VIEW",  1,      iniFile) != 0 ? true : false;
             Opt.BrowserViewMode     = IniFileHandler.GetPrivateProfileInt(  "OPT",      "BROWSER_MODE",         0,      iniFile) != 0 ? true : false;
@@ -1000,14 +1433,43 @@ namespace Kagamin2
             Opt.EnablePush          = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_PUSH",          0,      iniFile) != 0 ? true : false;
             Opt.EnableInfo          = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_INFO",          0,      iniFile) != 0 ? true : false;
             Opt.EnableAdmin         = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_ADMIN",         0,      iniFile) != 0 ? true : false;
+            Opt.WebKick             = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_WEBKICK",       1, iniFile) != 0 ? true : false;
+            Opt.AuthWebSet          = IniFileHandler.GetPrivateProfileInt(  "OPT",      "AUTH_WEB", 0, iniFile) != 0 ? true : false;
+            Opt.NotDialogIPError = IniFileHandler.GetPrivateProfileInt("OPT", "IP_ERROR", 1, iniFile) != 0 ? true : false;
+            IniFileHandler.GetPrivateProfileString("OPT", "RESET_TIME", "00:00", sb, (uint)sb.Capacity, iniFile); Opt.ResetDayTime = sb.ToString();
+            IniFileHandler.GetPrivateProfileString("OPT", "AUTH_ID", "", sb, (uint)sb.Capacity, iniFile); Opt.AuthID = sb.ToString();
+            IniFileHandler.GetPrivateProfileString("OPT", "AUTH_PASSWORD", "", sb, (uint)sb.Capacity, iniFile); Opt.AuthPass = sb.ToString();
+
+            Opt.ViewWMP = IniFileHandler.GetPrivateProfileInt("OPT", "ENABLE_WMP", 0, iniFile) != 0 ? true : false;
+
+
+            Acl.TrafficHour = IniFileHandler.GetPrivateProfileInt("ACL", "ENABLE_HOUR", 0, iniFile);
+            Opt.TransKagamin = IniFileHandler.GetPrivateProfileInt("OPT", "ENABLE_TRANS", 0, iniFile) != 0 ? true : false;
+            Opt.NotMyTrans = IniFileHandler.GetPrivateProfileInt("OPT", "NOT_TRANS", 0, iniFile) != 0 ? true : false;
+            Opt.ImportRedirect = IniFileHandler.GetPrivateProfileInt("OPT", "IMPORT_REDIRECT", 0, iniFile) != 0 ? true : false;
+
+            Opt.TransCont = IniFileHandler.GetPrivateProfileInt("OPT", "TRANS_CONT", 3, iniFile);
+            Opt.InTrayOn = IniFileHandler.GetPrivateProfileInt("OPT", "ENABLE_INTRAY", 1, iniFile) != 0 ? true : false;
+
             IniFileHandler.GetPrivateProfileString(                         "OPT",      "ADMIN_PASS",           "",     sb, (uint)sb.Capacity, iniFile);    Opt.AdminPass = sb.ToString();
             IniFileHandler.GetPrivateProfileString(                         "OPT",      "SOUND_CONN_OK",        "",     sb, (uint)sb.Capacity, iniFile);    Opt.SndConnOkFile = sb.ToString();
             IniFileHandler.GetPrivateProfileString(                         "OPT",      "SOUND_CONN_NG",        "",     sb, (uint)sb.Capacity, iniFile);    Opt.SndConnNgFile = sb.ToString();
             IniFileHandler.GetPrivateProfileString(                         "OPT",      "SOUND_DISC",           "",     sb, (uint)sb.Capacity, iniFile);    Opt.SndDiscFile = sb.ToString();
-            IniFileHandler.GetPrivateProfileString(                         "OPT",      "OUT_URL",              "http://live24.2ch.net/test/read.cgi/livevenus", sb, (uint)sb.Capacity, iniFile); Opt.OutUrl = sb.ToString();
-            IniFileHandler.GetPrivateProfileString(                         "OPT",      "APP_NAME",             "",     sb, (uint)sb.Capacity, iniFile);    Opt.AppName = sb.ToString();
-            Opt.EnableResolveHost   = IniFileHandler.GetPrivateProfileInt(  "OPT",      "ENABLE_RESOLVE_HOST",  0,      iniFile) != 0 ? true : false;
+             //IniFileHandler.GetPrivateProfileString(                         "OPT",      "OUT_URL",              "http://live24.2ch.net/test/read.cgi/livevenus", sb, (uint)sb.Capacity, iniFile); Opt.OutUrl = sb.ToString();
+            IniFileHandler.GetPrivateProfileString("OPT", "OUT_URL", "http://live24.2ch.net/test/read.cgi/livevenus,http://jbbs.livedoor.jp", sb, (uint)sb.Capacity, iniFile);Opt.OutUrl = new List<string>(sb.ToString().Split(','));
+            IniFileHandler.GetPrivateProfileString(                         "OPT",      "APP_NAME",             "DER",     sb, (uint)sb.Capacity, iniFile);    Opt.AppName = sb.ToString();
 
+            
+            /*IniFileHandler.GetPrivateProfileString("SQL", "HOST", "", sb, (uint)sb.Capacity, iniFile); Opt.HostMySQL = sb.ToString();
+            IniFileHandler.GetPrivateProfileString("SQL", "USER", "", sb, (uint)sb.Capacity, iniFile); Opt.UserMuSQL = sb.ToString();
+            IniFileHandler.GetPrivateProfileString("SQL", "PASSWORD", "", sb, (uint)sb.Capacity, iniFile); Opt.PassMySQL = sb.ToString();
+            IniFileHandler.GetPrivateProfileString("SQL", "READ", "", sb, (uint)sb.Capacity, iniFile); Opt.ReadRowMySQL = sb.ToString();
+            IniFileHandler.GetPrivateProfileString("SQL", "READ_IP", "", sb, (uint)sb.Capacity, iniFile); Opt.ReadRowIPMySQL = sb.ToString();
+            IniFileHandler.GetPrivateProfileString("SQL", "DB", "", sb, (uint)sb.Capacity, iniFile); Opt.RearDB = sb.ToString();
+            IniFileHandler.GetPrivateProfileString("SQL", "HYOU", "", sb, (uint)sb.Capacity, iniFile); Opt.ReadHyou = sb.ToString();
+            
+            Opt.MySQLEnable = IniFileHandler.GetPrivateProfileInt("SQL", "MYSQL_ENABLE", 0, iniFile) != 0 ? true : false;
+            */
             Retry.InRetryInterval   = IniFileHandler.GetPrivateProfileInt(  "RETRY",    "IN_INTERVAL",          10,     iniFile);
             Retry.InRetryTime       = IniFileHandler.GetPrivateProfileInt(  "RETRY",    "IN_TIME",              5,      iniFile);
             Retry.OutRetryInterval  = IniFileHandler.GetPrivateProfileInt(  "RETRY",    "OUT_INTERVAL",         10,     iniFile);
@@ -1018,12 +1480,15 @@ namespace Kagamin2
             Sock.SockSendTimeout    = IniFileHandler.GetPrivateProfileInt(  "SOCK",     "SEND_TO",              2000,   iniFile);
             Sock.SockSendQueueSize  = IniFileHandler.GetPrivateProfileInt(  "SOCK",     "QUEUE_SIZE",           200,    iniFile);
             Sock.SockCloseDelay     = IniFileHandler.GetPrivateProfileInt(  "SOCK",     "CLOSE_DELAY",          5000,   iniFile);
+            Sock.upnp = IniFileHandler.GetPrivateProfileInt("SOCK", "UPNP_ENABLE", 0, iniFile) == 0 ? false : true;
+            Sock.VirtualHost = IniFileHandler.GetPrivateProfileInt("SOCK", "HOST_ENABLE", 0, iniFile) == 0 ? false : true;
+            Sock.ConnInfoSend = IniFileHandler.GetPrivateProfileInt("SOCK", "CONINFO_ENABLE", 0, iniFile) == 0 ? false : true;
 
-            uint _sch_num            = IniFileHandler.GetPrivateProfileInt( "SCH",      "NUM",                  0,      iniFile);
+            uint _sch_num = IniFileHandler.GetPrivateProfileInt("SCH", "NUM", 0, iniFile);
             for (uint _num = 0; _num < _sch_num; _num++)
             {
                 IniFileHandler.GetPrivateProfileString("SCH", _num.ToString(), "", sb, (uint)sb.Capacity, iniFile);
-                string[] _data        = sb.ToString().Split(',');
+                string[] _data = sb.ToString().Split(',');
                 if (_data.Length == 12)
                 {
                     try
@@ -1047,6 +1512,7 @@ namespace Kagamin2
                     catch { }
                 }
             }
+            Front.Acl.TrafficHour = 1;
         }
 
         /// <summary>
@@ -1072,16 +1538,89 @@ namespace Kagamin2
                 str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
             IniFileHandler.WritePrivateProfileString("ACL", "DENY_IMPORT_URL", str, iniFile);
 
+            // List<string> → カンマ区切りstring変換
+            str = "";
+            foreach (string s in Acl.DenyHost)
+                str += s + ",";
+            if (str.Length >= 1)
+                str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
+            IniFileHandler.WritePrivateProfileString("ACL", "DENY_CLIENT_IP", str, iniFile);
+
+            // List<string> → カンマ区切りstring変換
+            str = "";
+            foreach (string s in Acl.DenyUA)
+                str += s + ",";
+            if (str.Length >= 1)
+                str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
+            IniFileHandler.WritePrivateProfileString("ACL", "DENY_CLIENT_UA", str, iniFile);
+
+            // List<string> → カンマ区切りstring変換
+            str = "";
+            foreach (Kagami _k in Front.KagamiList)
+            {
+                if (_k != null)
+                {
+                    str += _k.Status.MyPort.ToString() + ",";
+                    str += _k.Status.GUILimitUPSpeed.ToString() + ",";
+
+                }
+            }
+            if (str.Length >= 1)
+                str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
+            IniFileHandler.WritePrivateProfileString("GUI", "BAND_PORT_WIDTH", str, iniFile);
+
+            // List<string> → カンマ区切りstring変換
+            str = "";
+            foreach (Kagami _k in Front.KagamiList)
+            {
+                if (_k != null)
+                {
+                    str += _k.Status.MyPort.ToString() + ",";
+                    str += _k.Status.Conn_UserSet.ToString() + ",";
+
+                }
+            }
+            if (str.Length >= 1)
+                str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
+            IniFileHandler.WritePrivateProfileString("GUI", "PORT_CONN", str, iniFile);
+
+
+            // List<string> → カンマ区切りstring変換
+            str = "";
+            foreach (Kagami _k in Front.KagamiList)
+            {
+                if (_k != null)
+                {
+                    str += _k.Status.MyPort.ToString() + ",";
+                    str += _k.Status.Reserve.ToString() + ",";
+
+                }
+            }
+            if (str.Length >= 1)
+                str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
+            IniFileHandler.WritePrivateProfileString("GUI", "PORT_RESERVE", str, iniFile);
+
             IniFileHandler.WritePrivateProfileString("ACL", "LIMIT_SAME_IMPORT", Acl.LimitSameImportURL.ToString(), iniFile);
             IniFileHandler.WritePrivateProfileString("ACL", "LIMIT_IMPORT_OUT", Acl.ImportOutTime.ToString(), iniFile);
             IniFileHandler.WritePrivateProfileString("ACL", "ENABLE_CLIENT_OUT", Acl.ClientOutCheck ? "1" : "0", iniFile);
-            IniFileHandler.WritePrivateProfileString("ACL", "PORT_FULL_ONLY", Acl.PortFullOnlyCheck ? "1" : "0", iniFile);
             IniFileHandler.WritePrivateProfileString("ACL", "ENABLE_CLIENT_NOTIP", Acl.ClientNotIPCheck ? "1" : "0", iniFile);
             IniFileHandler.WritePrivateProfileString("ACL", "LIMIT_CLIENT_NUM", Acl.ClientOutNum.ToString(), iniFile);
             IniFileHandler.WritePrivateProfileString("ACL", "LIMIT_CLIENT_TIME", Acl.ClientOutTime.ToString(), iniFile);
             IniFileHandler.WritePrivateProfileString("ACL", "LIMIT_SAME_CLIENT", Acl.LimitSameClient.ToString(), iniFile);
-            IniFileHandler.WritePrivateProfileString("ACL", "SET_USER_IP_CHECK", Acl.SetUserIpCheck ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("ACL", "LIMIT_LOGIN_COUNT", Acl.FailureCount.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("ACL", "CLOSED_PASSWORD", Acl.ClosedPassward, iniFile);
+            IniFileHandler.WritePrivateProfileString("ACL", "CLOSED_COMMENT", Acl.ClosedComment, iniFile);
+            IniFileHandler.WritePrivateProfileString("ACL", "ENABLE_HOUR", Acl.TrafficHour.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("ACL", "PORT_FULL_ONLY", Acl.PortFullOnlyCheck ? "1" : "0", iniFile);
 
+            IniFileHandler.WritePrivateProfileString("ACL", "ENABLE_STOPMB", Acl.StopFlag ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("ACL", "ENABLE_CONDL", Acl.DLContainFlag?"1":"0", iniFile);
+            IniFileHandler.WritePrivateProfileString("ACL", "STOP_SYSTEM", Acl.StopSelect.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("ACL", "STOP_MB", Acl.StopMB.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("ACL", "MB_SELECT", Acl.StopMBSelect.ToString(), iniFile);
+            ///IniFileHandler.WritePrivateProfileString("ACL", "DAY_SELECT", Acl.StopDaySelect.ToString(), iniFile);
+            ///IniFileHandler.WritePrivateProfileString("ACL", "SUNDAY_UP", Acl.SunDayUP ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("ACL", "SET_USER_IP_CHECK", Acl.SetUserIpCheck ? "1" : "0", iniFile);
             IniFileHandler.WritePrivateProfileString("BNDWTH", "ENABLE", BndWth.EnableBandWidth ? "1" : "0", iniFile);
             IniFileHandler.WritePrivateProfileString("BNDWTH", "MODE", BndWth.BandStopMode.ToString(), iniFile);
             IniFileHandler.WritePrivateProfileString("BNDWTH", "VALUE", BndWth.BandStopValue.ToString(), iniFile);
@@ -1105,7 +1644,6 @@ namespace Kagamin2
             IniFileHandler.WritePrivateProfileString("FORM", "CLM_SCHEDULE", Form.ScheduleColumn, iniFile);
             IniFileHandler.WritePrivateProfileString("FORM", "MON_UNIT", Form.monViewUnit.ToString(), iniFile);
             IniFileHandler.WritePrivateProfileString("FORM", "ICON", Form.IconIndex.ToString(), iniFile);
-            IniFileHandler.WritePrivateProfileString("FORM", "ENABLE_TRAY_ICON", Form.EnableTrayIcon ? "1" : "0", iniFile);
 
             // List<string> → カンマ区切りstring変換
             str = "";
@@ -1115,63 +1653,149 @@ namespace Kagamin2
                 str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
             IniFileHandler.WritePrivateProfileString("GUI", "FAVORITE_LIST", str, iniFile);
 
+            // List<string> → カンマ区切りstring変換
+            str = "";
+            foreach (string s in Gui.ReserveList)
+                str += s + ",";
+            if (str.Length >= 1)
+                str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
+            IniFileHandler.WritePrivateProfileString("GUI", "RESERVE_LIST", str, iniFile);
+
+
             // List<int> → カンマ区切りstring変換
             str = "";
             foreach (int s in Gui.PortList)
                 str += s.ToString() + ",";
             if (str.Length >= 1)
                 str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
-            IniFileHandler.WritePrivateProfileString("GUI", "PORT_LIST",    str,                    iniFile);
-            IniFileHandler.WritePrivateProfileString("GUI", "IMPORT_URL",   Gui.ImportURL,          iniFile);
-            IniFileHandler.WritePrivateProfileString("GUI", "CONN",         Gui.Conn.ToString(),    iniFile);
-            IniFileHandler.WritePrivateProfileString("GUI", "RESV",         Gui.Reserve.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("GUI", "PORT_LIST", str, iniFile);
 
-            IniFileHandler.WritePrivateProfileString("HP", "USE_HP",                Hp.UseHP ? "1" : "0",       iniFile);
-            IniFileHandler.WritePrivateProfileString("HP", "HOSTNAME",              Hp.IpHTTP,                  iniFile);
-            IniFileHandler.WritePrivateProfileString("HP", "PORT",                  Hp.PortHTTP.ToString(),     iniFile);
-            IniFileHandler.WritePrivateProfileString("HP", "PUBLIC_DIR",            Hp.PublicDir,               iniFile);
-            IniFileHandler.WritePrivateProfileString("HP", "IP_CHECK_URL",          Hp.IPCheckURL,              iniFile);
-            IniFileHandler.WritePrivateProfileString("HP", "IP_CHECK_LINE",         Hp.IPCheckLine.ToString(),  iniFile);
+            // List<int> → カンマ区切りstring変換
+            /*str = "";
+            string str1 = "";
+            foreach (int s in Gui.PortList)
+            {
+                Kagami k = IndexOf(s);
+                str += k.Status.VirtualHost + ",";
+                str1 += k.Status.SQLOn ? "1" : "0";
 
-            IniFileHandler.WritePrivateProfileString("KICK", "CHECK_SECOND",        Kick.KickCheckSecond.ToString(),    iniFile);
-            IniFileHandler.WritePrivateProfileString("KICK", "CHECK_TIME",          Kick.KickCheckTime.ToString(),      iniFile);
-            IniFileHandler.WritePrivateProfileString("KICK", "DENY_TIME",           Kick.KickDenyTime.ToString(),       iniFile);
+            }
+            if (str.Length >= 1)
+                str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
+            if (str1.Length >= 1)
+                str1 = str1.Remove(str1.Length - 1);
+            IniFileHandler.WritePrivateProfileString("PORT", "VIRTUAL_HOST", str, iniFile);
+            IniFileHandler.WritePrivateProfileString("PORT", "SQL_ON", str1, iniFile);
+            */
+            // List<int> → カンマ区切りstring変換
+            str = "";
+            foreach (int s in Hp.StartPortList)
+                str += s.ToString() + ",";
+            if (str.Length >= 1)
+                str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
+            IniFileHandler.WritePrivateProfileString("HP", "START_PORTLIST", str, iniFile);
 
-            IniFileHandler.WritePrivateProfileString("LOG", "FILE1",                Log.HpLogFile,              iniFile);
-            IniFileHandler.WritePrivateProfileString("LOG", "FILE2",                Log.KagamiLogFile,          iniFile);
-            IniFileHandler.WritePrivateProfileString("LOG", "ENABLE_DETAIL",        Log.LogDetail ? "1" : "0",  iniFile);
-            IniFileHandler.WritePrivateProfileString("LOG", "TRS_UP_DAY",           Log.TrsUpDay.ToString(),    iniFile);
-            IniFileHandler.WritePrivateProfileString("LOG", "TRS_DL_DAY",           Log.TrsDlDay.ToString(),    iniFile);
-            IniFileHandler.WritePrivateProfileString("LOG", "TRS_UP_MON",           Log.TrsUpMon.ToString(),    iniFile);
-            IniFileHandler.WritePrivateProfileString("LOG", "TRS_DL_MON",           Log.TrsDlMon.ToString(),    iniFile);
-            IniFileHandler.WritePrivateProfileString("LOG", "LAST_UPDATE",          Log.LastUpdate,             iniFile);
+            str = "";
+            for (int i = 0; i < Gui.PortList.Count; i++)
+            {
+                str += Gui.PortList[i].ToString() + ",";
+                try
+                {
+                    str += Front.IndexOf(Gui.PortList[i]).Status.Conn_UserSet.ToString() + ",";
+                }
+                catch
+                {
+                    str += Gui.Conn + ",";
+                }
+            }
+            if (str.Length >= 1)
+                str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
+            IniFileHandler.WritePrivateProfileString("GUI", "SET_LIST", str, iniFile);
 
-            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_BROWSER_VIEW",  Opt.BrowserView     ? "1" : "0", iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "BROWSER_MODE",         Opt.BrowserViewMode ? "1" : "0", iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_KAGAMIEXE",     Opt.PriKagamiexe    ? "1" : "0", iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_KAGAMIN",       Opt.PriKagamin      ? "1" : "0", iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_BALLOONTIP",    Opt.BalloonTip      ? "1" : "0", iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_PUSH",          Opt.EnablePush      ? "1" : "0", iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_INFO",          Opt.EnableInfo      ? "1" : "0", iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_ADMIN",         Opt.EnableAdmin     ? "1" : "0", iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "ADMIN_PASS",           Opt.AdminPass,                   iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "SOUND_CONN_OK",        Opt.SndConnOkFile,               iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "SOUND_CONN_NG",        Opt.SndConnNgFile,               iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "SOUND_DISC",           Opt.SndDiscFile,                 iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "OUT_URL",              Opt.OutUrl,                      iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "APP_NAME",             Opt.AppName,                     iniFile);
-            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_RESOLVE_HOST",  Opt.EnableResolveHost ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("GUI", "IMPORT_URL", Gui.ImportURL, iniFile);
+            IniFileHandler.WritePrivateProfileString("GUI", "CONN", Gui.Conn.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("GUI", "RESV", Gui.Reserve.ToString(), iniFile);
 
-            IniFileHandler.WritePrivateProfileString("RETRY", "IN_INTERVAL",    Retry.InRetryInterval.ToString(),   iniFile);
-            IniFileHandler.WritePrivateProfileString("RETRY", "IN_TIME",        Retry.InRetryTime.ToString(),       iniFile);
-            IniFileHandler.WritePrivateProfileString("RETRY", "OUT_INTERVAL",   Retry.OutRetryInterval.ToString(),  iniFile);
-            IniFileHandler.WritePrivateProfileString("RETRY", "OUT_TIME",       Retry.OutRetryTime.ToString(),      iniFile);
+            IniFileHandler.WritePrivateProfileString("HP", "USE_HP", Hp.UseHP ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("HP", "HOSTNAME", Hp.IpHTTP, iniFile);
+            IniFileHandler.WritePrivateProfileString("HP", "PORT", Hp.PortHTTP.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("HP", "PUBLIC_DIR", Hp.PublicDir, iniFile);
+            IniFileHandler.WritePrivateProfileString("HP", "IP_CHECK_URL", Hp.IPCheckURL, iniFile);
+            IniFileHandler.WritePrivateProfileString("HP", "IP_CHECK_LINE", Hp.IPCheckLine.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("HP", "HP_START", Hp.HPstartON ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("HP", "PORT_START", Hp.PortstartON ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("HP", "AUTH_ENABLE", Hp.AuthEnable ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("HP", "AUTH_USER", Hp.AuthUser, iniFile);
+            IniFileHandler.WritePrivateProfileString("HP", "AUTH_PASS", Hp.AuthPass, iniFile);
 
-            IniFileHandler.WritePrivateProfileString("SOCK", "CONN_TO",     Sock.SockConnTimeout.ToString(),    iniFile);
-            IniFileHandler.WritePrivateProfileString("SOCK", "RECV_TO",     Sock.SockRecvTimeout.ToString(),    iniFile);
-            IniFileHandler.WritePrivateProfileString("SOCK", "SEND_TO",     Sock.SockSendTimeout.ToString(),    iniFile);
-            IniFileHandler.WritePrivateProfileString("SOCK", "QUEUE_SIZE",  Sock.SockSendQueueSize.ToString(),  iniFile);
-            IniFileHandler.WritePrivateProfileString("SOCK", "CLOSE_DELAY", Sock.SockCloseDelay.ToString(),     iniFile);
+            IniFileHandler.WritePrivateProfileString("KICK", "CHECK_SECOND", Kick.KickCheckSecond.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("KICK", "CHECK_TIME", Kick.KickCheckTime.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("KICK", "DENY_TIME", Kick.KickDenyTime.ToString(), iniFile);
+
+            IniFileHandler.WritePrivateProfileString("LOG", "FILE1", Log.HpLogFile, iniFile);
+            IniFileHandler.WritePrivateProfileString("LOG", "FILE2", Log.KagamiLogFile, iniFile);
+            IniFileHandler.WritePrivateProfileString("LOG", "ENABLE_DETAIL", Log.LogDetail ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("LOG", "TRS_UP_DAY", Log.TrsUpDay.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("LOG", "TRS_DL_DAY", Log.TrsDlDay.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("LOG", "TRS_UP_MON", Log.TrsUpMon.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("LOG", "TRS_DL_MON", Log.TrsDlMon.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("LOG", "LAST_UPDATE", Log.LastUpdate, iniFile);
+
+            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_BROWSER_VIEW", Opt.BrowserView ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "BROWSER_MODE", Opt.BrowserViewMode ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_KAGAMIEXE", Opt.PriKagamiexe ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_KAGAMIN", Opt.PriKagamin ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_BALLOONTIP", Opt.BalloonTip ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_PUSH", Opt.EnablePush ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_INFO", Opt.EnableInfo ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_ADMIN", Opt.EnableAdmin ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "IMPORT_REDIRECT", Opt.ImportRedirect ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "ADMIN_PASS", Opt.AdminPass, iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "SOUND_CONN_OK", Opt.SndConnOkFile, iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "SOUND_CONN_NG", Opt.SndConnNgFile, iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "SOUND_DISC", Opt.SndDiscFile, iniFile);
+            //IniFileHandler.WritePrivateProfileString("OPT", "OUT_URL", Opt.OutUrl, iniFile);
+
+            // List<string> → カンマ区切りstring変換
+            str = "";
+            foreach (string s in Opt.OutUrl)
+                str += s + ",";
+            if (str.Length >= 1)
+                str = str.Remove(str.Length - 1); // 余計な末尾のカンマ消し
+            IniFileHandler.WritePrivateProfileString("OPT", "OUT_URL", str, iniFile);
+
+
+            IniFileHandler.WritePrivateProfileString("OPT", "APP_NAME", Opt.AppName, iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_INTRAY", Opt.InTrayOn ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_WEBKICK", Opt.WebKick ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "AUTH_ID", Opt.AuthID, iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "AUTH_PASSWORD", Opt.AuthPass, iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "AUTH_WEB", Opt.AuthWebSet ? "1" : "0", iniFile);
+
+            IniFileHandler.WritePrivateProfileString("OPT", "RESET_TIME",Opt.ResetDayTime , iniFile);
+
+            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_WMP", Opt.ViewWMP ? "1" : "0", iniFile);
+
+            IniFileHandler.WritePrivateProfileString("OPT", "ENABLE_TRANS", Opt.TransKagamin ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "NOT_TRANS", Opt.NotMyTrans ? "1" : "0", iniFile);
+
+            IniFileHandler.WritePrivateProfileString("OPT", "IP_ERROR", Opt.NotDialogIPError ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "AUTH_WEB", Opt.AuthWebSet ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("OPT", "TRANS_CONT", Opt.TransCont.ToString(), iniFile);
+
+            IniFileHandler.WritePrivateProfileString("RETRY", "IN_INTERVAL", Retry.InRetryInterval.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("RETRY", "IN_TIME", Retry.InRetryTime.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("RETRY", "OUT_INTERVAL", Retry.OutRetryInterval.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("RETRY", "OUT_TIME", Retry.OutRetryTime.ToString(), iniFile);
+
+            IniFileHandler.WritePrivateProfileString("SOCK", "CONN_TO", Sock.SockConnTimeout.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("SOCK", "RECV_TO", Sock.SockRecvTimeout.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("SOCK", "SEND_TO", Sock.SockSendTimeout.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("SOCK", "QUEUE_SIZE", Sock.SockSendQueueSize.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("SOCK", "CLOSE_DELAY", Sock.SockCloseDelay.ToString(), iniFile);
+            IniFileHandler.WritePrivateProfileString("SOCK", "UPNP_ENABLE", Sock.upnp ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("SOCK", "HOST_ENABLE", Sock.VirtualHost ? "1" : "0", iniFile);
+            IniFileHandler.WritePrivateProfileString("SOCK", "CONINFO_ENABLE", Sock.ConnInfoSend ? "1" : "0", iniFile);
 
             int _sch_num = ScheduleItem.Count;
             IniFileHandler.WritePrivateProfileString("SCH", "NUM", _sch_num.ToString(), iniFile);
@@ -1331,47 +1955,44 @@ namespace Kagamin2
         #endregion
 
         #region クライアントのキック登録
+        /*
         /// <summary>
         /// KickList上のユーザをKick開始状態にする。
         /// KickListにない場合は追加する。
         /// </summary>
         /// <param name="_ip">KickするIP</param>
-        /// <param name="_deny_tim">Kick時間(秒) -1で無期限</param>
+        /// <param name="_deny_tim">Kick時間(秒)</param>
         static public void AddKickUser(string _ip, int _deny_tim)
         {
             lock (KickList)
             {
-                if (KickList.ContainsKey(_ip) == true)
+                if (_deny_tim != -1)
                 {
-                    // KickList登録済み
-                    if (_deny_tim >= 0)
-                    {
-                        // 期限付きKick
+                    if (KickList.ContainsKey(_ip) == true)
                         KickList[_ip] = DateTime.Now.AddSeconds(_deny_tim).ToString() + ",0";
-                    }
                     else
-                    {
-                        // 無期限Kick
-                        KickList[_ip] = DateTime.Now.ToString() + ",-1";
-                    }
+                        KickList.Add(_ip, DateTime.Now.AddSeconds(_deny_tim).ToString() + ",0");
                 }
                 else
                 {
-                    // KickList新規登録
-                    if (_deny_tim >= 0)
-                    {
-                        //期限付きKick
-                        KickList.Add(_ip, DateTime.Now.AddSeconds(_deny_tim).ToString() + ",0");
-                    }
+                    if (KickList.ContainsKey(_ip) == true)
+                        KickList[_ip] = "-1,0";
                     else
-                    {
-                        // 無期限Kick
-                        KickList.Add(_ip, DateTime.Now.ToString() + ",-1");
-                    }
+                        KickList.Add(_ip, "-1" + ",0");
                 }
             }
-        }
 
+        }
+        /// <summary>
+        /// KickList上のユーザをKick開始状態にする。
+        /// KickListにない場合は追加する。
+        /// 時間無制限
+        /// </summary>
+        /// <param name="_ip">KickするIP</param>
+        static public void AddKickUser(string _ip)
+        {
+            AddKickUser(_ip, -1);
+        }
         /// <summary>
         /// KickList上のユーザをKick解除状態にする。
         /// KickListにない場合は追加する。
@@ -1387,6 +2008,7 @@ namespace Kagamin2
                     KickList.Add(_ip, DateTime.Now.ToString() + ",1");
             }
         }
+         */
         #endregion
 
         /// <summary>
@@ -1396,7 +2018,8 @@ namespace Kagamin2
         {
             if (Front.Hp.IPCheckURL == "" || Front.Hp.IPCheckLine <= 0)
             {
-                MessageBox.Show("グローバルIP取得ページの設定が正しくありません", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (Front.Opt.NotDialogIPError)
+                    MessageBox.Show("グローバルIP取得ページの設定が正しくありません", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
             // 1分以内の再取得はスキップする
@@ -1417,9 +2040,10 @@ namespace Kagamin2
             {
                 //後始末
                 wc.Dispose();
-                MessageBox.Show("IPアドレス確認用ホストにつながりませんでした" + Environment.NewLine +
-                                "URL:" + Front.Hp.IPCheckURL + Environment.NewLine,
-                                "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (Front.Opt.NotDialogIPError)
+                    MessageBox.Show("IPアドレス確認用ホストにつながりませんでした" + Environment.NewLine +
+                                    "URL:" + Front.Hp.IPCheckURL + Environment.NewLine,
+                                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
             //後始末
@@ -1438,11 +2062,12 @@ namespace Kagamin2
                 }
                 else
                 {
-                    MessageBox.Show("IPアドレスが取得できませんでした\r\n" +
-                                    "URL:" + Front.Hp.IPCheckURL + "\r\n" +
-                                    "LINE:" + Front.Hp.IPCheckLine + "\r\n" +
-                                    "STRING:" + line + "\r\n",
-                                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    if (Front.Opt.NotDialogIPError)
+                        MessageBox.Show("IPアドレスが取得できませんでした\r\n" +
+                                        "URL:" + Front.Hp.IPCheckURL + "\r\n" +
+                                        "LINE:" + Front.Hp.IPCheckLine + "\r\n" +
+                                        "STRING:" + line + "\r\n",
+                                        "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
                 }
             }
@@ -1639,13 +2264,49 @@ namespace Kagamin2
                     throw new Exception("not implemented.");
             }
         }
+        /// <summary>
+        /// 文字列連結メソッド(StringBuilder)
+        /// </summary>
+        /// <param name="_appendstr"></param>
+        /// <returns></returns>
+        static public string AppendStringBuilder(params string[] _appendstr)
+        {
+            StringBuilder strBil = new StringBuilder();
+            strBil.Length = 0;
+
+            for (int i = 0; i < _appendstr.Length; i++)
+            {
+                strBil.Append(_appendstr[i]);
+            }
+            string _r = strBil.ToString();
+            strBil.Length = 0;
+            
+            return _r;
+
+
+        }
+
 
         #region ログ出力
+        private class Logp
+        {
+            public int LogLv;
+            public Status Status;
+            public string Contents;
+
+            public Logp(int _log, Status _status, string _con)
+            {
+                LogLv = _log;
+                Status = _status;
+                Contents = _con;
+            }
+
+        }
         /// <summary>
         /// 通常のログ出力
         /// logLv=0 一般ログ出力
         /// logLv=1 重要ログ出力
-        /// 
+        /// logLv=2 ログファイル書き出しのみ
         /// 注意:
         /// オブジェクトをlockしたまま本メソッドを起動し、
         /// GUIスレッドでも同一オブジェクトがlock待ちとなった場合、
@@ -1657,10 +2318,12 @@ namespace Kagamin2
         /// <param name="_content">出力メッセージ</param>
         static public void AddLogData(int _logLv, Status _status, string _content)
         {
+            //ThreadPool.QueueUserWorkItem(new WaitCallback(AddLogData), new Logp(_logLv, _status, _content));
+
             DateTime _dtNow = DateTime.Now;
-            #if DEBUG
+#if DEBUG
             System.Diagnostics.Trace.WriteLine("■NORMAL" + _logLv + _dtNow.ToString("[MM/dd HH:mm:ss]") + "[" + _status.MyPort + "]" + _content);
-            #endif
+#endif
 
             try
             {
@@ -1669,14 +2332,17 @@ namespace Kagamin2
                 _item.Text = _dtNow.ToString("MM/dd HH:mm:ss");
                 _item.SubItems.Add(_content);
                 // 一般ログ
-                lock (_status.Gui.LogAllItem)
+                if (_logLv < 2)
                 {
-                    if (_status.Gui.LogAllItem.Count > 500)
-                        _status.Gui.LogAllItem.RemoveRange(0, _status.Gui.LogAllItem.Count - 500);
-                    _status.Gui.LogAllItem.Add(_item);
+                    lock (_status.Gui.LogAllItem)
+                    {
+                        if (_status.Gui.LogAllItem.Count > 500)
+                            _status.Gui.LogAllItem.RemoveRange(0, _status.Gui.LogAllItem.Count - 500);
+                        _status.Gui.LogAllItem.Add(_item);
+                    }
                 }
                 // 重要ログ
-                if (_logLv > 0)
+                if (_logLv == 1)
                 {
                     lock (_status.Gui.LogImpItem)
                     {
@@ -1687,17 +2353,30 @@ namespace Kagamin2
                 }
                 // GUI更新
                 // 出力したいログのLvが、現在のGUI表示モードより上ならGUI更新
-                if (_logLv >= LogMode)
-                    Event.EventUpdateLog(_logLv,_status.Kagami, _item);
+                if ((_logLv >= LogMode && _logLv != 2))
+                    Event.EventUpdateLog(_logLv, _status.Kagami, _item);
 
                 // ログファイルへの出力
                 lock (Front.Log.KagamiLogFile)
                 {
                     if (Front.Log.KagamiLogFile.Length != 0)
                     {
+                        /*
+                        Regex y = new Regex("yyyy");
                         Regex ym = new Regex("yyyymm");
                         Regex ymd = new Regex("yyyymmdd");
-                        string logFile = ym.Replace(ymd.Replace(Front.Log.KagamiLogFile, _dtNow.ToString("yyyyMMdd")), _dtNow.ToString("yyyyMM"));
+                        string logFile = y.Replace(ym.Replace(ymd.Replace(Front.Log.KagamiLogFile, _dtNow.ToString("yyyyMMdd")), _dtNow.ToString("yyyyMM")), _dtNow.ToString("yyyy"));
+                        */
+                        string logFile = FilePathTrans(Front.Log.KagamiLogFile);
+
+                        if (!Directory.Exists(logFile))
+                        {
+                            try
+                            {
+                                Directory.CreateDirectory(Path.GetDirectoryName(logFile));
+                            }
+                            catch { }
+                        }
                         try
                         {
                             StreamWriter log = new StreamWriter(logFile, true);
@@ -1722,6 +2401,37 @@ namespace Kagamin2
             }
 
         }
+        static public string FilePathTrans(string _path)
+        {
+            DateTime _dtNow = DateTime.Now;
+            return _path.Replace("yyyy", _dtNow.ToString("yyyy"))
+                        .Replace("mm", _dtNow.ToString("MM"))
+                        .Replace("dd", _dtNow.ToString("dd"))
+                        .Replace("hh", _dtNow.ToString("HH"))
+                        .Replace("MM", _dtNow.ToString("mm"))
+                        .Replace("ss", _dtNow.ToString("ss"));
+        }
+        static private void AddLogData(object obj)
+        {
+            int _logLv = ((Logp)obj).LogLv;
+            Status _status = ((Logp)obj).Status;
+            string _content = ((Logp)obj).Contents;
+
+          
+        }
+        static public void DiscClient(string ip,Kagami k)
+        {
+            foreach (ListViewItem temp in k.Status.Gui.ClientItem)
+            {
+                if (temp.SubItems[1].Text == ip)
+                {
+                    k.Status.Client.Disc(temp.SubItems[0].Text);
+                }
+
+            }
+
+
+        }
         /// <summary>
         /// 詳細ログ出力
         /// オプションで詳細ログ出力ONの時のみ有効、ログファイルに直接出力
@@ -1729,38 +2439,55 @@ namespace Kagamin2
         /// <param name="_content">出力メッセージ</param>
         static public void AddLogDetail(string _content)
         {
-            DateTime _dtNow = DateTime.Now;
             if (Front.Log.LogDetail)
             {
-                #if DEBUG
-                System.Diagnostics.Trace.WriteLine("■DETAIL" + _dtNow.ToString("[MM/dd HH:mm:ss]") + _content);
-                #endif
-                lock (Front.Log.KagamiLogFile)
+                ThreadPool.QueueUserWorkItem(new WaitCallback(AddLogDetail), _content);
+            }
+        }
+        static private void AddLogDetail(object obj)
+        {
+            string _content = obj.ToString();
+            DateTime _dtNow = DateTime.Now;
+
+#if DEBUG
+            System.Diagnostics.Trace.WriteLine("■DETAIL" + _dtNow.ToString("[MM/dd HH:mm:ss]") + _content);
+#endif
+            lock (Front.Log.KagamiLogFile)
+            {
+                if (Front.Log.KagamiLogFile.Length != 0)
                 {
-                    if (Front.Log.KagamiLogFile.Length != 0)
+                    Regex ym = new Regex("yyyymm");
+                    Regex ymd = new Regex("yyyymmdd");
+                    string logFile = ym.Replace(ymd.Replace(Front.Log.KagamiLogFile, _dtNow.ToString("yyyyMMdd")), _dtNow.ToString("yyyyMM"));
+                    try
                     {
-                        Regex ym = new Regex("yyyymm");
-                        Regex ymd = new Regex("yyyymmdd");
-                        string logFile = ym.Replace(ymd.Replace(Front.Log.KagamiLogFile, _dtNow.ToString("yyyyMMdd")), _dtNow.ToString("yyyyMM"));
-                        try
-                        {
-                            StreamWriter log = new StreamWriter(logFile, true);
-                            log.WriteLine(_content);
-                            log.Close();
-                        }
-                        catch (DirectoryNotFoundException dnfe)
-                        {
-                            dnfe.ToString(); // warning対策
-                        }
-                        catch (Exception e)
-                        {
-                            MessageBox.Show("ログ書き込みエラー:" + _content + "\r\nErrorMsg:" + e.Message + "\r\nTrace:" + e.StackTrace);
-                        }
+                        StreamWriter log = new StreamWriter(logFile, true);
+                        log.WriteLine(_content);
+                        log.Close();
+                    }
+                    catch (DirectoryNotFoundException dnfe)
+                    {
+                        dnfe.ToString(); // warning対策
+                    }
+                    catch (Exception e)
+                    {
+                        MessageBox.Show("ログ書き込みエラー:" + _content + "\r\nErrorMsg:" + e.Message + "\r\nTrace:" + e.StackTrace);
                     }
                 }
             }
+
+
         }
 
+        static public void AddKickLog(Status _status, string _place)
+        {
+         /*   
+            if (_status.Kick.KickFlag[0] == null)
+                AddLogData(1, _status, "KickFlag=null");
+            else
+                AddLogData(1, _status, _place + "により" + _status.Kick.KickFlag[0].ToString() + "に変更されました");
+           */ 
+        }
         /// <summary>
         /// デバッグ専用メッセージ出力
         /// </summary>
@@ -1779,6 +2506,7 @@ namespace Kagamin2
 
     }//end of class Front
 }// end of namespace
+
 
 
 /// <summary>

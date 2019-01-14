@@ -65,24 +65,7 @@ function closewin() {
 			<input size="50" type="radio" name="radio" value="off" <URL_OFF>>非表示
 		</td>
 	</tr>
-	<tr>
-		<td class="category">
-			親リダイレクト
-		</td>
-		<td>
-			<input type="radio" name="redir_p" size="50" value="on" <REDIR_P_ON>>許可
-			<input type="radio" name="redir_p" size="50" value="off" <REDIR_P_OFF>>不許可
-		</td>
-	</tr>
-	<tr>
-		<td class="category">
-			子リダイレクト
-		</td>
-		<td>
-			<input type="radio" name="redir_c" size="50" value="on" <REDIR_C_ON>>許可
-			<input type="radio" name="redir_c" size="50" value="off" <REDIR_C_OFF>>不許可
-		</td>
-	</tr>
+
 	<tr>
 		<td class="category">
 			リザーブIP登録
@@ -91,6 +74,37 @@ function closewin() {
 			<input size="50" type="text" name="reserve" value="<RESERVE_LIST>">
 		</td>
 	</tr>
+	
+	<!--キックIP登録を使いたい人はコメントアウト解除してください
+	<tr>
+		<td class="category">
+			キックIP登録
+		</td>
+		<td>
+			<input size="50" type="text" name="kick" value="<KICK_LIST>">
+		</td>
+	</tr>
+	-->
+	<!--エクスポート認証を使いたい人はコメントアウトを解除してください
+	<tr>
+		<td class="category">
+			エクスポート認証ID
+		</td>
+		<td>
+			<input type="text" name="authid" size="50" value="<AUTH_ID>">
+		</td>
+	</tr>
+	
+	<tr>
+		<td class="category">
+			エクスポート認証<br>
+			パスワード
+		</td>
+		<td>
+			<input type="text" name="authpass" size="50" value="<AUTH_PASS>">
+		</td>
+	</tr>
+	-->
 <!-- 実況URL入力を使いたい人はコメントアウト解除すれば使えます
 	<tr>
 		<td class="category">
@@ -101,6 +115,18 @@ function closewin() {
 		</td>
 	</tr>
 -->
+<!-- 子鏡転送設定入力を使いたい人はコメントアウト解除すれば使えます。送られない場合かがみんの設定になります
+	<tr>
+		<td class="category">
+			子鏡転送設定
+		</td>
+		<td>
+			<input type="radio" name="trans" size="50" value="on" <TRANS_ON>>許可
+			<input type="radio" name="trans" size="50" value="off" <TRANS_OFF>>不許可
+		</td>
+	</tr>
+!-->
+</table>
 </table>
 <hr width="90%" size=1>
 <table align="center">
@@ -137,25 +163,7 @@ function closewin() {
 			配信URLの表示
 		</td>
 		<td>
-			入力したURLを表示させるかどうか設定できます。
-		</td>
-	</tr>
-	<tr>
-		<td class="category">
-			親リダイレクト
-		</td>
-		<td>
-			美人になったとき、インポート元へのリダイレクト応答を<br>
-			返すかどうか設定できます。
-		</td>
-	</tr>
-	<tr>
-		<td class="category">
-			子リダイレクト
-		</td>
-		<td>
-			美人になったとき、子鏡へのリダイレクト応答を<br>
-			返すかどうか設定できます。
+			入力したURLを表示させるかどうかを変更できます。
 		</td>
 	</tr>
 	<tr>
@@ -170,17 +178,42 @@ function closewin() {
 <!--
 	<tr>
 		<td class="category">
+			キックIP登録
+		</td>
+		<td>
+			キックIPをカンマ区切りで入力できます。時間無制限にセットされます。<br>
+			登録しない場合は空欄のままで問題ありません。
+		</td>
+	</tr>
+-->
+<!--
+	<tr>
+		<td class="category">
 			実況URL
 		</td>
 		<td>
 			実況スレッドURLを登録できます。<br>
                         <small><LIVEOUT_URL></small> と<br>
-                        前方一致する必要があります。<br>
+                        一致する必要があります。<br>
 			登録すると鏡置き場トップに表示されます。<br>
                         登録しない場合は空欄のままで問題ありません。
 		</td>
 	</tr>
 -->
+<!--
+	<tr>
+		<td class="category">
+			子鏡転送設定
+		</td>
+		<td>
+			ONにすると鏡がビジー時に<Br>
+			空いてる子鏡へ転送するように<br>
+			プレイヤーにリクエストを返します。<Br>
+			自動的に空いてる子鏡へ転送、接続されます。<br>
+		</td>
+	</tr>
+!-->
+</table>
 </table>
 </form>
 
