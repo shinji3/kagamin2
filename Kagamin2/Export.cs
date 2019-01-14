@@ -1067,7 +1067,7 @@ namespace Kagamin2
 #endregion
 
                     // 美人じゃない
-                    if (userAgent.IndexOf("NSPlayer") == 0 || ((userAgent.IndexOf("shoutcastsource") == 0 || userAgent.IndexOf("WinampMPEG") == 0) && Status.ShoutCast))
+                    if (userAgent.IndexOf("NSPlayer") == 0)
                     {
 
                         if (Status.ExportAuth && Status.AuthID != "" && Status.AuthPass != "")
@@ -1094,7 +1094,7 @@ namespace Kagamin2
 
                         }
 
-                        if (str.IndexOf("x-mms-framed") > 0 || str.IndexOf("stream-switch") > 0 || Status.Type == 2 || Status.ShoutCast)
+                        if (str.IndexOf("x-mms-framed") > 0 || str.IndexOf("stream-switch") > 0 || Status.Type == 2)
                         {
 #region NSPlayerヘッダ送信＋接続持続
                             try
@@ -1111,9 +1111,6 @@ namespace Kagamin2
                                 else
                                 {
                                 */
-
-                                //if (Status.ShoutCast)
-                                //    sock.Send(Status.DataRspMsg10);
 
                                 bool flag = false;
                                 foreach (string tempra in Front.Acl.CheckUserAgent)

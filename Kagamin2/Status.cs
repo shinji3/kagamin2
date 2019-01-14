@@ -290,10 +290,6 @@ namespace Kagamin2
         /// </summary>
         public bool TransWeb = Front.Opt.TransKagamin;
         /// <summary>
-        /// Shoutcastソース
-        /// </summary>
-        public bool ShoutCast = false;
-        /// <summary>
         /// ヘッダ取得応答/HTTP1.0
         /// </summary>
         public byte[] HeadRspMsg10 = null;
